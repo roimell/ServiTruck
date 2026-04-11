@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase';
 import Navbar from '@/components/navbar';
+import ImageUpload from '@/components/image-upload';
 import type { Servicio, Perfil, Resena, Categoria, PaqueteServicio, DisponibilidadSemanal, SlotDisponible } from '@/types/database';
 import { DIAS_SEMANA } from '@/types/database';
 
@@ -29,6 +31,8 @@ export default function ServicioDetallePage() {
   const [mostrarSolicitud, setMostrarSolicitud] = useState(false);
   const [descripcion, setDescripcion] = useState('');
   const [paqueteSeleccionado, setPaqueteSeleccionado] = useState<string | null>(null);
+  const [fotosCliente, setFotosCliente] = useState<string[]>([]);
+  const [userId, setUserId] = useState<string>('');
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
 
@@ -70,6 +74,7 @@ export default function ServicioDetallePage() {
 
         // Registrar vista de perfil
         const { data: { user } } = await supabase.auth.getUser();
+        if (user) setUserId(user.id);
         supabase.from('vistas_perfil').insert({
           proveedor_id: s.proveedor_id,
           visitante_id: user?.id || null,
@@ -110,6 +115,7 @@ export default function ServicioDetallePage() {
       descripcion_cliente: descripcion.trim(),
       notas_cliente: descripcion.trim(),
       paquete_id: paqueteSeleccionado,
+      fotos_cliente: fotosCliente,
     });
 
     if (error) {
@@ -191,6 +197,27 @@ export default function ServicioDetallePage() {
             </div>
           )}
         </div>
+
+        {/* Galería de fotos */}
+        {servicio.fotos && servicio.fotos.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="font-semibold text-gray-900 mb-3">Fotos del servicio</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {servicio.fotos.map((url, idx) => (
+                <div key={idx} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
+                  <Image
+                    src={url}
+                    alt={`Foto ${idx + 1}`}
+                    fill
+                    sizes="(max-width: 640px) 50vw, 33vw"
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Descripción */}
         {servicio.descripcion && (
@@ -300,6 +327,23 @@ export default function ServicioDetallePage() {
                   Paquete seleccionado: {paquetes.find((p) => p.id === paqueteSeleccionado)?.nombre}
                 </span>
                 <p className="text-emerald-600 text-xs mt-0.5">El precio final se acuerda en el chat</p>
+              </div>
+            )}
+
+            {userId && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Fotos de referencia <span className="text-gray-400 font-normal">(opcional)</span>
+                </label>
+                <ImageUpload
+                  bucket="solicitudes"
+                  userId={userId}
+                  value={fotosCliente}
+                  onChange={setFotosCliente}
+                  maxImages={3}
+                  maxSizeMB={5}
+                  publicBucket={false}
+                />
               </div>
             )}
 

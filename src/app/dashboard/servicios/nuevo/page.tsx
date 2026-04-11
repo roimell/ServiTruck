@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import Navbar from '@/components/navbar';
+import ImageUpload from '@/components/image-upload';
 import type { Categoria } from '@/types/database';
 
 const CORREGIMIENTOS = [
@@ -21,6 +22,7 @@ export default function NuevoServicioPage() {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
+  const [userId, setUserId] = useState<string>('');
 
   // Form state
   const [titulo, setTitulo] = useState('');
@@ -28,6 +30,7 @@ export default function NuevoServicioPage() {
   const [categoriaId, setCategoriaId] = useState<number | null>(null);
   const [precioBase, setPrecioBase] = useState('');
   const [corregimiento, setCorregimiento] = useState('');
+  const [fotos, setFotos] = useState<string[]>([]);
 
   // Paquetes inline
   const [paquetes, setPaquetes] = useState<{ nombre: string; descripcion: string; precio: string }[]>([]);
@@ -35,6 +38,9 @@ export default function NuevoServicioPage() {
   useEffect(() => {
     supabase.from('categorias').select('*').order('nombre').then(({ data }) => {
       if (data) setCategorias(data);
+    });
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setUserId(data.user.id);
     });
   }, []);
 
@@ -77,6 +83,7 @@ export default function NuevoServicioPage() {
         categoria_id: categoriaId,
         precio_base: Number(precioBase),
         corregimiento,
+        fotos,
       })
       .select()
       .single();
@@ -211,6 +218,21 @@ export default function NuevoServicioPage() {
                 />
               </div>
               <p className="text-xs text-gray-400 mt-1">Precio de referencia. Los clientes verán esto al buscar.</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Fotos del servicio</label>
+              {userId && (
+                <ImageUpload
+                  bucket="servicios"
+                  userId={userId}
+                  value={fotos}
+                  onChange={setFotos}
+                  maxImages={5}
+                  maxSizeMB={5}
+                  publicBucket={true}
+                />
+              )}
             </div>
           </div>
 

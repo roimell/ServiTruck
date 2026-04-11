@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import Navbar from '@/components/navbar';
+import ImageUpload from '@/components/image-upload';
 import type { Servicio, Categoria, PaqueteServicio } from '@/types/database';
 
 const CORREGIMIENTOS = [
@@ -41,6 +42,8 @@ export default function EditarServicioPage() {
   const [precioBase, setPrecioBase] = useState('');
   const [corregimiento, setCorregimiento] = useState('');
   const [activo, setActivo] = useState(true);
+  const [fotos, setFotos] = useState<string[]>([]);
+  const [userId, setUserId] = useState<string>('');
 
   // Paquetes
   const [paquetes, setPaquetes] = useState<PaqueteForm[]>([]);
@@ -50,13 +53,15 @@ export default function EditarServicioPage() {
 
   useEffect(() => {
     async function cargar() {
-      const [catRes, servRes, paqRes] = await Promise.all([
+      const [catRes, servRes, paqRes, userRes] = await Promise.all([
         supabase.from('categorias').select('*').order('nombre'),
         supabase.from('servicios').select('*').eq('id', servicioId).single(),
         supabase.from('paquetes_servicio').select('*').eq('servicio_id', servicioId).order('orden'),
+        supabase.auth.getUser(),
       ]);
 
       if (catRes.data) setCategorias(catRes.data);
+      if (userRes.data.user) setUserId(userRes.data.user.id);
 
       if (servRes.data) {
         const s = servRes.data as Servicio;
@@ -66,6 +71,7 @@ export default function EditarServicioPage() {
         setPrecioBase(s.precio_base.toString());
         setCorregimiento(s.corregimiento);
         setActivo(s.activo);
+        setFotos(s.fotos || []);
         setStats({ rating: s.rating_promedio, resenas: s.total_resenas, vistas: 0 });
       }
 
@@ -127,6 +133,7 @@ export default function EditarServicioPage() {
         precio_base: Number(precioBase),
         corregimiento,
         activo,
+        fotos,
       })
       .eq('id', servicioId);
 
@@ -314,6 +321,21 @@ export default function EditarServicioPage() {
                   className="w-full rounded-xl border border-gray-300 pl-8 pr-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Fotos del servicio</label>
+              {userId && (
+                <ImageUpload
+                  bucket="servicios"
+                  userId={userId}
+                  value={fotos}
+                  onChange={setFotos}
+                  maxImages={5}
+                  maxSizeMB={5}
+                  publicBucket={true}
+                />
+              )}
             </div>
           </div>
 

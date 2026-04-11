@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase';
 import Navbar from '@/components/navbar';
 import EstadoBadge from '@/components/estado-badge';
 import ChatTrabajo from '@/components/chat-trabajo';
+import ResenaForm from '@/components/resena-form';
 import type { SolicitudTrabajo, EstadoTrabajo, Servicio, Perfil } from '@/types/database';
 import { ESTADOS_CHAT_ACTIVO } from '@/types/database';
 
@@ -22,7 +23,10 @@ export default function MisSolicitudesPage() {
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState<'todas' | 'activas' | 'completadas'>('activas');
   const [chatTrabajoId, setChatTrabajoId] = useState<string | null>(null);
+  const [resenaTrabajoId, setResenaTrabajoId] = useState<string | null>(null);
+  const [resenasYaHechas, setResenasYaHechas] = useState<Set<string>>(new Set());
   const chatSolicitud = solicitudes.find((s) => s.id === chatTrabajoId);
+  const resenaSolicitud = solicitudes.find((s) => s.id === resenaTrabajoId);
 
   useEffect(() => {
     cargarSolicitudes();
@@ -39,6 +43,19 @@ export default function MisSolicitudesPage() {
       .order('created_at', { ascending: false });
 
     setSolicitudes((data as SolicitudConDetalle[]) || []);
+
+    // Cargar qué trabajos ya tienen reseña
+    const trabajoIds = (data || []).map((s) => s.id);
+    if (trabajoIds.length > 0) {
+      const { data: resenasData } = await supabase
+        .from('resenas')
+        .select('trabajo_id')
+        .in('trabajo_id', trabajoIds);
+      if (resenasData) {
+        setResenasYaHechas(new Set(resenasData.map((r) => r.trabajo_id)));
+      }
+    }
+
     setLoading(false);
   }
 
@@ -166,15 +183,29 @@ export default function MisSolicitudesPage() {
 
     // Completado: dejar reseña
     if (s.estado === 'completado_fondos_liberados') {
-      acciones.push(
-        <button
-          key="resena"
-          onClick={() => router.push(`/servicio/${s.servicio_id}`)}
-          className="text-sm text-emerald-600 font-medium py-2 px-3 rounded-lg hover:bg-emerald-50 transition-colors"
-        >
-          Dejar reseña
-        </button>
-      );
+      if (resenasYaHechas.has(s.id)) {
+        acciones.push(
+          <span key="resena-hecha" className="text-sm text-gray-400 flex items-center gap-1 py-2 px-3">
+            <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            </svg>
+            Reseña publicada
+          </span>
+        );
+      } else {
+        acciones.push(
+          <button
+            key="resena"
+            onClick={() => setResenaTrabajoId(s.id)}
+            className="flex-1 bg-amber-500 text-white text-sm font-medium py-2 px-3 rounded-lg hover:bg-amber-600 transition-colors flex items-center justify-center gap-1"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            </svg>
+            Dejar reseña
+          </button>
+        );
+      }
     }
 
     // Chat para estados activos de ejecución
@@ -304,6 +335,19 @@ export default function MisSolicitudesPage() {
           trabajoId={chatTrabajoId}
           estadoTrabajo={chatSolicitud.estado}
           onEstadoCambiado={cargarSolicitudes}
+        />
+      )}
+
+      {/* Modal de reseña */}
+      {resenaTrabajoId && resenaSolicitud && (
+        <ResenaForm
+          trabajoId={resenaTrabajoId}
+          proveedorNombre={resenaSolicitud.proveedor?.nombre ?? 'el proveedor'}
+          onEnviada={() => {
+            setResenasYaHechas((prev) => new Set([...prev, resenaTrabajoId]));
+            setResenaTrabajoId(null);
+          }}
+          onCancelar={() => setResenaTrabajoId(null)}
         />
       )}
     </div>
