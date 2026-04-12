@@ -6,6 +6,34 @@ import { createClient } from '@/lib/supabase';
 import Navbar from '@/components/navbar';
 import type { Categoria } from '@/types/database';
 
+const STATS = [
+  { value: '500+', label: 'Profesionales activos' },
+  { value: '2,400+', label: 'Servicios completados' },
+  { value: '4.8', label: 'Calificación promedio', icon: '★' },
+  { value: '100%', label: 'Pagos protegidos' },
+];
+
+const TESTIMONIALS = [
+  {
+    name: 'María G.',
+    role: 'Cliente en Bella Vista',
+    text: 'Encontré un plomero en 20 minutos. El pago protegido me dio total tranquilidad.',
+    rating: 5,
+  },
+  {
+    name: 'Carlos R.',
+    role: 'Electricista certificado',
+    text: 'Desde que estoy en ServiTrust, mis clientes confían más y mi negocio creció un 40%.',
+    rating: 5,
+  },
+  {
+    name: 'Ana M.',
+    role: 'Cliente en Clayton',
+    text: 'La negociación por chat es super práctica. Ya no hay sorpresas con los precios.',
+    rating: 5,
+  },
+];
+
 export default function HomePage() {
   const supabase = createClient();
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -24,100 +52,196 @@ export default function HomePage() {
     }
   }
 
+  const CATEGORY_ICONS: Record<string, string> = {
+    'Electricidad': '⚡',
+    'Plomería': '🔧',
+    'Limpieza': '✨',
+    'Pintura': '🎨',
+    'Cerrajería': '🔑',
+    'Mudanzas': '📦',
+    'Jardinería': '🌿',
+    'Aire Acondicionado': '❄️',
+    'Albañilería': '🧱',
+    'Tecnología': '💻',
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[var(--color-warm-bg)]">
       <Navbar />
 
-      {/* Hero */}
-      <section className="bg-gradient-to-br from-emerald-600 to-emerald-800 text-white">
-        <div className="max-w-4xl mx-auto px-4 py-16 md:py-24 text-center">
-          <h1 className="text-3xl md:text-5xl font-bold mb-4">
-            Servicios de confianza en Panamá
+      {/* ── Hero ── */}
+      <section className="hero-gradient noise relative">
+        <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 pt-16 pb-20 md:pt-24 md:pb-28">
+          {/* Trust badge */}
+          <div className="animate-in flex justify-center mb-6">
+            <div className="trust-badge !bg-white/10 !border-white/20 !text-teal-100">
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              Plataforma #1 de servicios en Panamá
+            </div>
+          </div>
+
+          <h1 className="animate-in animate-in-delay-1 text-center font-display text-4xl sm:text-5xl md:text-6xl font-bold text-white leading-[1.1] tracking-tight">
+            Profesionales de confianza,{' '}
+            <span className="relative inline-block">
+              <span className="relative z-10">pago garantizado</span>
+              <span className="absolute bottom-1 left-0 right-0 h-3 bg-amber-400/30 rounded-full -z-0" />
+            </span>
           </h1>
-          <p className="text-emerald-100 text-lg md:text-xl mb-8 max-w-2xl mx-auto">
-            Contrata profesionales verificados con pagos protegidos en custodia.
-            Tu dinero está seguro hasta que el trabajo esté listo.
+
+          <p className="animate-in animate-in-delay-2 text-center text-teal-100 text-lg md:text-xl mt-5 mb-10 max-w-2xl mx-auto leading-relaxed">
+            Contrata al mejor profesional para tu proyecto. Tú pagas cuando quedas satisfecho
+            — así de simple.
           </p>
 
           {/* Search */}
-          <form onSubmit={handleSearch} className="max-w-xl mx-auto">
-            <div className="flex bg-white rounded-xl shadow-lg overflow-hidden">
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="¿Qué necesitas? (ej: electricista, plomero...)"
-                className="flex-1 px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:outline-none"
-              />
-              <button
-                type="submit"
-                className="bg-emerald-700 text-white px-6 hover:bg-emerald-800 transition-colors flex items-center"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </button>
+          <div className="animate-in animate-in-delay-3 max-w-xl mx-auto">
+            <form onSubmit={handleSearch}>
+              <div className="flex bg-white rounded-2xl shadow-2xl shadow-black/10 overflow-hidden ring-1 ring-white/20">
+                <div className="flex-1 flex items-center px-5">
+                  <svg className="w-5 h-5 text-stone-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="¿Qué necesitas? (ej: electricista, plomero...)"
+                    className="w-full px-3 py-4 text-stone-900 placeholder-stone-400 focus:outline-none text-[15px]"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="bg-gradient-to-r from-teal-600 to-teal-700 text-white px-7 font-medium hover:from-teal-700 hover:to-teal-800 transition-all text-sm"
+                >
+                  Buscar
+                </button>
+              </div>
+            </form>
+
+            {/* Quick suggestions */}
+            <div className="flex flex-wrap justify-center gap-2 mt-4">
+              {['Electricista', 'Plomero', 'Limpieza', 'Pintor'].map((s) => (
+                <Link
+                  key={s}
+                  href={`/buscar?q=${s}`}
+                  className="px-3 py-1 rounded-full bg-white/10 text-teal-100 text-xs font-medium
+                    hover:bg-white/20 transition-colors border border-white/10"
+                >
+                  {s}
+                </Link>
+              ))}
             </div>
-          </form>
+          </div>
+
+          {/* Stats bar */}
+          <div className="animate-in animate-in-delay-4 mt-14 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
+            {STATS.map((s) => (
+              <div key={s.label} className="text-center">
+                <div className="text-2xl md:text-3xl font-display font-bold text-white flex items-center justify-center gap-1">
+                  {s.icon && <span className="text-amber-400 text-xl">{s.icon}</span>}
+                  {s.value}
+                </div>
+                <p className="text-teal-200/80 text-xs mt-1">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Wave separator */}
+        <div className="absolute bottom-0 left-0 right-0">
+          <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
+            <path d="M0 60V30C240 0 480 0 720 30C960 60 1200 60 1440 30V60H0Z" fill="var(--color-warm-bg)" />
+          </svg>
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="max-w-4xl mx-auto px-4 py-16">
-        <h2 className="text-2xl font-bold text-gray-900 text-center mb-10">Cómo funciona</h2>
-        <div className="grid md:grid-cols-3 gap-8">
+      {/* ── How it works ── */}
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 py-20">
+        <div className="text-center mb-14">
+          <p className="text-teal-600 font-medium text-sm tracking-wide uppercase mb-2">Simple y transparente</p>
+          <h2 className="font-display text-3xl md:text-4xl font-bold text-stone-900">Cómo funciona</h2>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-8 md:gap-6">
           {[
             {
+              step: '01',
               icon: (
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               ),
               title: 'Busca y elige',
-              desc: 'Encuentra el profesional que necesitas en tu zona, con reseñas y precios transparentes.',
+              desc: 'Encuentra el profesional ideal en tu zona. Compara precios, reseñas y portafolios reales.',
+              color: 'teal',
             },
             {
+              step: '02',
               icon: (
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               ),
-              title: 'Pago en custodia',
-              desc: 'Tu dinero queda protegido. No se libera al profesional hasta que confirmes el trabajo.',
+              title: 'Negocia directo',
+              desc: 'Chatea con el profesional, acuerda el precio y recibe una cotización formal en segundos.',
+              color: 'amber',
             },
             {
+              step: '03',
               icon: (
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
               ),
-              title: 'Confirma y califica',
-              desc: 'Cuando estés satisfecho, libera los fondos y deja tu reseña para ayudar a la comunidad.',
+              title: 'Pago protegido',
+              desc: 'Tu pago se guarda de forma segura. Solo se libera cuando confirmas que el trabajo está perfecto.',
+              color: 'emerald',
             },
           ].map((step, i) => (
-            <div key={i} className="text-center">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4">
+            <div
+              key={i}
+              className="relative bg-white rounded-2xl border border-stone-200/80 p-7 card-hover group"
+            >
+              {/* Step number */}
+              <span className="absolute top-6 right-6 font-display text-5xl font-bold text-stone-100 group-hover:text-teal-50 transition-colors">
+                {step.step}
+              </span>
+
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 ${
+                step.color === 'teal' ? 'bg-teal-50 text-teal-600' :
+                step.color === 'amber' ? 'bg-amber-50 text-amber-600' :
+                'bg-emerald-50 text-emerald-600'
+              }`}>
                 {step.icon}
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">{step.title}</h3>
-              <p className="text-sm text-gray-500">{step.desc}</p>
+              <h3 className="font-display text-lg font-bold text-stone-900 mb-2">{step.title}</h3>
+              <p className="text-sm text-stone-500 leading-relaxed">{step.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Categories */}
+      {/* ── Categories ── */}
       {categorias.length > 0 && (
-        <section className="max-w-4xl mx-auto px-4 pb-16">
-          <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">Categorías</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <section className="max-w-5xl mx-auto px-4 sm:px-6 pb-20">
+          <div className="text-center mb-10">
+            <p className="text-teal-600 font-medium text-sm tracking-wide uppercase mb-2">Explora por categoría</p>
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-stone-900">¿Qué necesitas hoy?</h2>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {categorias.map((c) => (
               <Link
                 key={c.id}
                 href={`/buscar?cat=${c.id}`}
-                className="bg-white rounded-xl border border-gray-200 p-4 text-center hover:shadow-md hover:border-emerald-200 transition-all group"
+                className="group bg-white rounded-2xl border border-stone-200/80 p-5 text-center card-hover"
               >
-                <span className="text-sm font-medium text-gray-700 group-hover:text-emerald-700">
+                <span className="text-2xl mb-2 block">
+                  {CATEGORY_ICONS[c.nombre] || '🛠️'}
+                </span>
+                <span className="text-sm font-medium text-stone-700 group-hover:text-teal-700 transition-colors">
                   {c.nombre}
                 </span>
               </Link>
@@ -126,42 +250,153 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* CTA for providers */}
-      <section className="bg-gray-900 text-white">
-        <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-          <h2 className="text-2xl md:text-3xl font-bold mb-4">
-            ¿Eres profesional?
-          </h2>
-          <p className="text-gray-400 max-w-xl mx-auto mb-8">
-            Únete a ServiTrust y accede a datos de demanda en tu zona.
-            Te decimos qué servicios están buscando y nadie ofrece.
-          </p>
-          <Link
-            href="/auth/registro"
-            className="inline-flex items-center gap-2 bg-emerald-600 text-white font-semibold px-6 py-3 rounded-xl hover:bg-emerald-700 transition-colors"
-          >
-            Registrarme como proveedor
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-            </svg>
-          </Link>
+      {/* ── Testimonials ── */}
+      <section className="bg-stone-50 border-y border-stone-200/60">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-20">
+          <div className="text-center mb-12">
+            <p className="text-teal-600 font-medium text-sm tracking-wide uppercase mb-2">Lo que dicen nuestros usuarios</p>
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-stone-900">Confianza real</h2>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {TESTIMONIALS.map((t, i) => (
+              <div key={i} className="bg-white rounded-2xl border border-stone-200/80 p-6 card-hover">
+                {/* Stars */}
+                <div className="flex gap-0.5 mb-4">
+                  {Array.from({ length: t.rating }).map((_, j) => (
+                    <svg key={j} className="w-4 h-4 text-amber-400 fill-current" viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                  ))}
+                </div>
+                <p className="text-stone-600 text-sm leading-relaxed mb-5">
+                  &ldquo;{t.text}&rdquo;
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white font-semibold text-sm">
+                    {t.name[0]}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-stone-900">{t.name}</p>
+                    <p className="text-xs text-stone-400">{t.role}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-emerald-600 flex items-center justify-center">
+      {/* ── Provider CTA ── */}
+      <section className="relative overflow-hidden">
+        <div className="hero-gradient noise">
+          <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-20">
+            <div className="md:flex items-center gap-12">
+              <div className="flex-1 mb-8 md:mb-0">
+                <div className="trust-badge !bg-white/10 !border-white/20 !text-teal-100 mb-5">
+                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" />
+                  </svg>
+                  Haz crecer tu negocio
+                </div>
+                <h2 className="font-display text-3xl md:text-4xl font-bold text-white leading-tight mb-4">
+                  Tu talento merece más clientes
+                </h2>
+                <p className="text-teal-100 leading-relaxed mb-6 max-w-lg">
+                  Únete a la red de profesionales de ServiTrust. Recibe solicitudes en tu zona,
+                  cobra de forma segura y accede a datos de demanda que nadie más te da.
+                </p>
+
+                <div className="space-y-3 mb-8">
+                  {[
+                    'Cobro asegurado por cada trabajo completado',
+                    'Datos exclusivos: qué buscan y nadie ofrece en tu zona',
+                    'Perfil profesional con reseñas que generan confianza',
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <div className="w-5 h-5 rounded-full bg-amber-400/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <svg className="w-3 h-3 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <span className="text-teal-50 text-sm">{item}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <Link
+                  href="/auth/registro"
+                  className="inline-flex items-center gap-2 bg-white text-teal-700 font-semibold px-7 py-3.5 rounded-xl
+                    hover:bg-teal-50 transition-all shadow-lg shadow-black/10 group"
+                >
+                  Registrarme como proveedor
+                  <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </Link>
+              </div>
+
+              {/* Visual element — trust illustration */}
+              <div className="hidden md:block flex-shrink-0">
+                <div className="relative w-72 h-72">
+                  {/* Floating cards */}
+                  <div className="absolute top-0 left-4 bg-white/95 rounded-2xl p-4 shadow-xl float" style={{ animationDelay: '0s' }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-teal-500 flex items-center justify-center text-white text-lg">⚡</div>
+                      <div>
+                        <p className="font-semibold text-stone-900 text-sm">Nueva solicitud</p>
+                        <p className="text-xs text-stone-400">Electricista en Bella Vista</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="absolute bottom-12 left-0 bg-white/95 rounded-2xl p-4 shadow-xl float" style={{ animationDelay: '2s' }}>
+                    <div className="flex items-center gap-2">
+                      <div className="flex -space-x-1.5">
+                        {['🟢', '🔵', '🟡'].map((c, i) => (
+                          <div key={i} className="w-7 h-7 rounded-full bg-stone-200 border-2 border-white flex items-center justify-center text-xs">{c}</div>
+                        ))}
+                      </div>
+                      <div className="ml-1">
+                        <p className="text-xs font-semibold text-stone-900">+23 clientes</p>
+                        <p className="text-[10px] text-stone-400">buscan esta semana</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="absolute top-24 right-0 bg-white/95 rounded-2xl p-4 shadow-xl float" style={{ animationDelay: '4s' }}>
+                    <div className="text-center">
+                      <p className="text-2xl font-display font-bold text-teal-600">$1,250</p>
+                      <p className="text-[10px] text-stone-400 uppercase tracking-wide">ganado este mes</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Footer ── */}
+      <footer className="bg-white border-t border-stone-200/60">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-600 to-teal-700 flex items-center justify-center">
                 <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
               </div>
-              <span className="text-sm font-semibold text-gray-900">ServiTrust Panamá</span>
+              <span className="font-display font-bold text-stone-900">
+                Servi<span className="text-teal-600">Trust</span>
+              </span>
             </div>
-            <p className="text-xs text-gray-400">
-              &copy; {new Date().getFullYear()} ServiTrust. Todos los derechos reservados.
+
+            <div className="flex items-center gap-6 text-sm text-stone-400">
+              <Link href="/buscar" className="hover:text-stone-600 transition-colors">Buscar</Link>
+              <Link href="/auth/registro" className="hover:text-stone-600 transition-colors">Registrarse</Link>
+            </div>
+
+            <p className="text-xs text-stone-400">
+              &copy; {new Date().getFullYear()} ServiTrust Panamá
             </p>
           </div>
         </div>

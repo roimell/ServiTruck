@@ -11,22 +11,35 @@ export default function Navbar() {
   const supabase = createClient();
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     async function cargarPerfil() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
       const { data } = await supabase
         .from('perfiles')
         .select('*')
         .eq('id', user.id)
         .single();
-
       if (data) setPerfil(data);
     }
     cargarPerfil();
   }, []);
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!menuAbierto) return;
+    const close = () => setMenuAbierto(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [menuAbierto]);
 
   async function cerrarSesion() {
     await supabase.auth.signOut();
@@ -37,84 +50,113 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+    <nav
+      className={`sticky top-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? 'glass border-b border-stone-200/60 shadow-warm'
+          : 'bg-transparent'
+      }`}
+    >
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center">
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-600 to-teal-700 flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
           </div>
-          <span className="font-bold text-gray-900 text-lg">ServiTrust</span>
+          <span className="font-display font-bold text-stone-900 text-xl tracking-tight">
+            Servi<span className="text-teal-600">Trust</span>
+          </span>
         </Link>
 
-        {/* Search link (mobile) */}
+        {/* Mobile search link */}
         <Link
           href="/buscar"
-          className="md:hidden text-gray-500 hover:text-gray-700"
+          className="md:hidden w-9 h-9 rounded-xl bg-stone-100 flex items-center justify-center text-stone-500 hover:bg-stone-200 hover:text-stone-700 transition-colors"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </Link>
 
         {/* Desktop nav */}
-        <div className="hidden md:flex items-center gap-6">
-          <Link href="/buscar" className="text-sm text-gray-600 hover:text-gray-900">
+        <div className="hidden md:flex items-center gap-2">
+          <Link
+            href="/buscar"
+            className="px-4 py-2 rounded-xl text-sm font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-100/80 transition-all"
+          >
             Buscar servicios
           </Link>
 
           {perfil ? (
-            <div className="relative">
+            <div className="relative ml-2">
               <button
-                onClick={() => setMenuAbierto(!menuAbierto)}
-                className="flex items-center gap-2 text-sm"
+                onClick={(e) => { e.stopPropagation(); setMenuAbierto(!menuAbierto); }}
+                className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl hover:bg-stone-100/80 transition-all"
               >
-                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-semibold">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
                   {perfil.nombre[0]}
                 </div>
-                <span className="text-gray-700">{perfil.nombre}</span>
+                <span className="text-sm font-medium text-stone-700">{perfil.nombre.split(' ')[0]}</span>
+                <svg className={`w-4 h-4 text-stone-400 transition-transform ${menuAbierto ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </button>
 
               {menuAbierto && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-50">
+                <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-warm-lg border border-stone-200/80 py-2 animate-scale-in origin-top-right">
+                  <div className="px-4 py-2 border-b border-stone-100">
+                    <p className="text-sm font-medium text-stone-900">{perfil.nombre}</p>
+                    <p className="text-xs text-stone-400 truncate">{perfil.es_proveedor ? 'Proveedor verificado' : 'Cliente'}</p>
+                  </div>
                   {perfil.es_proveedor && (
                     <Link
                       href="/dashboard"
                       onClick={() => setMenuAbierto(false)}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
                     >
+                      <svg className="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                      </svg>
                       Mi Dashboard
                     </Link>
                   )}
                   <Link
                     href="/mis-solicitudes"
                     onClick={() => setMenuAbierto(false)}
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
                   >
+                    <svg className="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
                     Mis Solicitudes
                   </Link>
-                  <button
-                    onClick={cerrarSesion}
-                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                  >
-                    Cerrar sesión
-                  </button>
+                  <div className="border-t border-stone-100 mt-1 pt-1">
+                    <button
+                      onClick={cerrarSesion}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      Cerrar sesión
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 ml-2">
               <Link
                 href="/auth/login"
-                className="text-sm text-gray-600 hover:text-gray-900"
+                className="px-4 py-2 rounded-xl text-sm font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-100/80 transition-all"
               >
                 Iniciar sesión
               </Link>
               <Link
                 href="/auth/registro"
-                className="text-sm bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700"
+                className="btn-primary text-sm !px-5 !py-2"
               >
                 Registrarse
               </Link>
