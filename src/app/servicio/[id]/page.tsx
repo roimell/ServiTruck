@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { createClient } from '@/lib/supabase';
 import Navbar from '@/components/navbar';
 import ImageUpload from '@/components/image-upload';
-import type { Servicio, Perfil, Resena, Categoria, PaqueteServicio, DisponibilidadSemanal, SlotDisponible } from '@/types/database';
+import type { Servicio, Perfil, Resena, Categoria, PaqueteServicio, DisponibilidadSemanal } from '@/types/database';
 import { DIAS_SEMANA } from '@/types/database';
 
 interface ServicioDetalle extends Servicio {
@@ -26,6 +26,7 @@ export default function ServicioDetallePage() {
   const [disponibilidad, setDisponibilidad] = useState<DisponibilidadSemanal[]>([]);
   const [resenas, setResenas] = useState<(Resena & { autor: Pick<Perfil, 'nombre'> })[]>([]);
   const [loading, setLoading] = useState(true);
+  const [galeriaIdx, setGaleriaIdx] = useState<number | null>(null);
 
   // Solicitar servicio
   const [mostrarSolicitud, setMostrarSolicitud] = useState(false);
@@ -38,7 +39,7 @@ export default function ServicioDetallePage() {
 
   useEffect(() => {
     async function cargar() {
-      const [servicioRes, paquetesRes, dispRes, resenasRes] = await Promise.all([
+      const [servicioRes, paquetesRes, , resenasRes] = await Promise.all([
         supabase
           .from('servicios')
           .select('*, proveedor:perfiles!proveedor_id(id, nombre, avatar_url, corregimiento), categoria_rel:categorias(*)')
@@ -50,7 +51,6 @@ export default function ServicioDetallePage() {
           .eq('servicio_id', servicioId)
           .eq('activo', true)
           .order('orden'),
-        // Disponibilidad del proveedor (la cargamos después de saber el proveedor_id)
         Promise.resolve(null),
         supabase
           .from('resenas')
@@ -63,7 +63,6 @@ export default function ServicioDetallePage() {
         const s = servicioRes.data as any;
         setServicio(s);
 
-        // Cargar disponibilidad del proveedor
         const { data: dispData } = await supabase
           .from('disponibilidad_semanal')
           .select('*')
@@ -72,7 +71,6 @@ export default function ServicioDetallePage() {
           .order('dia_semana');
         setDisponibilidad(dispData || []);
 
-        // Registrar vista de perfil
         const { data: { user } } = await supabase.auth.getUser();
         if (user) setUserId(user.id);
         supabase.from('vistas_perfil').insert({
@@ -130,13 +128,14 @@ export default function ServicioDetallePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[var(--color-warm-bg)]">
         <Navbar />
-        <div className="max-w-2xl mx-auto px-4 py-12">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-3/4" />
-            <div className="h-4 bg-gray-200 rounded w-1/2" />
-            <div className="h-32 bg-gray-200 rounded" />
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
+          <div className="animate-pulse space-y-5">
+            <div className="h-48 bg-stone-200 rounded-2xl" />
+            <div className="h-6 bg-stone-200 rounded w-2/3" />
+            <div className="h-4 bg-stone-200 rounded w-1/3" />
+            <div className="h-32 bg-stone-200 rounded-2xl" />
           </div>
         </div>
       </div>
@@ -145,195 +144,252 @@ export default function ServicioDetallePage() {
 
   if (!servicio) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[var(--color-warm-bg)]">
         <Navbar />
-        <div className="max-w-2xl mx-auto px-4 py-12 text-center">
-          <p className="text-gray-500 text-lg">Servicio no encontrado</p>
-          <button onClick={() => router.back()} className="mt-4 text-emerald-600 underline">Volver</button>
+        <div className="max-w-3xl mx-auto px-4 py-20 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-stone-100 flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 20a8 8 0 100-16 8 8 0 000 16z" />
+            </svg>
+          </div>
+          <p className="text-stone-500 font-medium">Servicio no encontrado</p>
+          <button onClick={() => router.back()} className="mt-4 text-teal-600 font-medium hover:text-teal-700">← Volver</button>
         </div>
       </div>
     );
   }
 
+  const fotos = servicio.fotos || [];
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[var(--color-warm-bg)]">
       <Navbar />
 
-      <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-        {/* Header */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
+      {/* Hero image gallery */}
+      {fotos.length > 0 && (
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6">
+          <div className={`grid gap-2 rounded-2xl overflow-hidden ${
+            fotos.length === 1 ? 'grid-cols-1' : fotos.length === 2 ? 'grid-cols-2' : 'grid-cols-3'
+          }`} style={{ maxHeight: '320px' }}>
+            {fotos.slice(0, 3).map((url, idx) => (
+              <div
+                key={idx}
+                className={`relative cursor-pointer group overflow-hidden ${
+                  fotos.length >= 3 && idx === 0 ? 'row-span-2 col-span-2' : ''
+                }`}
+                style={{ minHeight: fotos.length === 1 ? '320px' : '158px' }}
+                onClick={() => setGaleriaIdx(idx)}
+              >
+                <Image src={url} alt={`Foto ${idx + 1}`} fill sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-cover group-hover:scale-105 transition-transform duration-500" unoptimized />
+                {idx === 2 && fotos.length > 3 && (
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                    <span className="text-white font-semibold">+{fotos.length - 3} más</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {galeriaIdx !== null && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setGaleriaIdx(null)}>
+          <button className="absolute top-4 right-4 text-white/70 hover:text-white" onClick={() => setGaleriaIdx(null)}>
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <img src={fotos[galeriaIdx]} alt="" className="max-h-[85vh] max-w-full rounded-xl object-contain" onClick={(e) => e.stopPropagation()} />
+          {fotos.length > 1 && (
+            <div className="absolute bottom-6 flex gap-2">
+              {fotos.map((_, i) => (
+                <button key={i} onClick={(e) => { e.stopPropagation(); setGaleriaIdx(i); }}
+                  className={`w-2.5 h-2.5 rounded-full transition-all ${i === galeriaIdx ? 'bg-white scale-125' : 'bg-white/40'}`} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+        {/* ── Header card ── */}
+        <div className="bg-white rounded-2xl border border-stone-200/80 p-6 shadow-warm">
           <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xl shrink-0">
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white font-bold text-xl shrink-0 shadow-sm">
               {servicio.proveedor?.nombre?.[0] ?? 'P'}
             </div>
-            <div className="flex-1">
-              <h1 className="text-xl font-bold text-gray-900">{servicio.titulo}</h1>
-              <p className="text-gray-500">{servicio.proveedor?.nombre}</p>
-              <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                {servicio.corregimiento}
-              </div>
-              {servicio.categoria_rel && (
-                <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium">
-                  {servicio.categoria_rel.nombre}
+            <div className="flex-1 min-w-0">
+              <h1 className="font-display text-xl sm:text-2xl font-bold text-stone-900">{servicio.titulo}</h1>
+              <p className="text-stone-500 font-medium">{servicio.proveedor?.nombre}</p>
+              <div className="flex flex-wrap items-center gap-3 mt-2">
+                <span className="flex items-center gap-1 text-sm text-stone-500">
+                  <svg className="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  {servicio.corregimiento}
                 </span>
-              )}
+                {servicio.categoria_rel && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 text-xs font-medium">
+                    {servicio.categoria_rel.nombre}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
           {servicio.rating_promedio > 0 && (
-            <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
+            <div className="flex items-center gap-3 mt-5 pt-5 border-t border-stone-100">
               <div className="flex items-center gap-0.5">
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <svg key={star} className={`w-5 h-5 ${star <= servicio.rating_promedio ? 'text-amber-400' : 'text-gray-200'} fill-current`} viewBox="0 0 20 20">
+                  <svg key={star} className={`w-5 h-5 ${star <= servicio.rating_promedio ? 'text-amber-400' : 'text-stone-200'} fill-current`} viewBox="0 0 20 20">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                   </svg>
                 ))}
               </div>
-              <span className="text-sm text-gray-600">{servicio.rating_promedio} ({servicio.total_resenas})</span>
+              <span className="text-sm font-medium text-stone-600">{servicio.rating_promedio}</span>
+              <span className="text-sm text-stone-400">({servicio.total_resenas} reseña{servicio.total_resenas !== 1 ? 's' : ''})</span>
             </div>
           )}
         </div>
 
-        {/* Galería de fotos */}
-        {servicio.fotos && servicio.fotos.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h2 className="font-semibold text-gray-900 mb-3">Fotos del servicio</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {servicio.fotos.map((url, idx) => (
-                <div key={idx} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
-                  <Image
-                    src={url}
-                    alt={`Foto ${idx + 1}`}
-                    fill
-                    sizes="(max-width: 640px) 50vw, 33vw"
-                    className="object-cover"
-                    unoptimized
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Descripción */}
+        {/* ── Description ── */}
         {servicio.descripcion && (
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h2 className="font-semibold text-gray-900 mb-2">Descripción</h2>
-            <p className="text-gray-600 whitespace-pre-line">{servicio.descripcion}</p>
+          <div className="bg-white rounded-2xl border border-stone-200/80 p-6 shadow-warm">
+            <h2 className="font-display font-bold text-stone-900 mb-3">Descripción</h2>
+            <p className="text-stone-600 leading-relaxed whitespace-pre-line">{servicio.descripcion}</p>
           </div>
         )}
 
-        {/* Paquetes */}
+        {/* ── Packages ── */}
         {paquetes.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h2 className="font-semibold text-gray-900 mb-3">Paquetes disponibles</h2>
+          <div className="bg-white rounded-2xl border border-stone-200/80 p-6 shadow-warm">
+            <h2 className="font-display font-bold text-stone-900 mb-4">Paquetes disponibles</h2>
             <div className="space-y-3">
               {paquetes.map((p) => (
-                <div
+                <button
                   key={p.id}
-                  className={`border rounded-xl p-4 cursor-pointer transition-all ${
+                  type="button"
+                  className={`w-full text-left border-2 rounded-xl p-4 transition-all duration-200 ${
                     paqueteSeleccionado === p.id
-                      ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-teal-500 bg-teal-50/50 shadow-sm'
+                      : 'border-stone-200 hover:border-stone-300 bg-white'
                   }`}
                   onClick={() => setPaqueteSeleccionado(paqueteSeleccionado === p.id ? null : p.id)}
                 >
                   <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium text-gray-900">{p.nombre}</h3>
-                      {p.descripcion && <p className="text-sm text-gray-500 mt-0.5">{p.descripcion}</p>}
+                    <div className="flex items-center gap-3">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                        paqueteSeleccionado === p.id ? 'border-teal-500 bg-teal-500' : 'border-stone-300'
+                      }`}>
+                        {paqueteSeleccionado === p.id && (
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-stone-900">{p.nombre}</h3>
+                        {p.descripcion && <p className="text-sm text-stone-500 mt-0.5">{p.descripcion}</p>}
+                      </div>
                     </div>
-                    <span className="text-lg font-bold text-emerald-700 shrink-0 ml-3">
+                    <span className="text-lg font-display font-bold text-teal-600 shrink-0 ml-3">
                       ${p.precio.toFixed(2)}
                     </span>
                   </div>
-                </div>
+                </button>
               ))}
-              <p className="text-xs text-gray-400">
-                Los precios son referenciales. El monto final se acuerda en el chat con el profesional.
+              <p className="text-xs text-stone-400 italic">
+                Precios referenciales. El monto final se acuerda en el chat con el profesional.
               </p>
             </div>
           </div>
         )}
 
-        {/* Disponibilidad */}
+        {/* ── Schedule ── */}
         {disponibilidad.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h2 className="font-semibold text-gray-900 mb-3">Disponibilidad</h2>
+          <div className="bg-white rounded-2xl border border-stone-200/80 p-6 shadow-warm">
+            <h2 className="font-display font-bold text-stone-900 mb-4">Disponibilidad</h2>
             <div className="grid grid-cols-2 gap-2">
               {disponibilidad.map((d) => (
-                <div key={d.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-                  <span className="text-sm font-medium text-gray-700">{DIAS_SEMANA[d.dia_semana]}</span>
-                  <span className="text-sm text-gray-500">
-                    {d.hora_inicio.slice(0, 5)} - {d.hora_fin.slice(0, 5)}
-                  </span>
+                <div key={d.id} className="flex items-center justify-between bg-stone-50 rounded-xl px-4 py-2.5">
+                  <span className="text-sm font-medium text-stone-700">{DIAS_SEMANA[d.dia_semana]}</span>
+                  <span className="text-sm text-stone-500 font-mono">{d.hora_inicio.slice(0, 5)} – {d.hora_fin.slice(0, 5)}</span>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Fotos */}
-        {servicio.fotos && servicio.fotos.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h2 className="font-semibold text-gray-900 mb-3">Portafolio</h2>
-            <div className="grid grid-cols-3 gap-2">
-              {servicio.fotos.map((foto, i) => (
-                <img key={i} src={foto} alt={`Trabajo ${i + 1}`} className="rounded-lg aspect-square object-cover w-full" />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* CTA: Solicitar servicio */}
+        {/* ── CTA: Solicitar servicio ── */}
         {!mostrarSolicitud && !enviado && (
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="flex items-center justify-between">
+          <div className="bg-gradient-to-r from-teal-600 to-teal-700 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+            <div className="absolute inset-0 opacity-10">
+              <svg className="w-full h-full" viewBox="0 0 400 200" fill="none">
+                <circle cx="350" cy="30" r="100" fill="white" />
+                <circle cx="50" cy="180" r="60" fill="white" />
+              </svg>
+            </div>
+            <div className="relative z-10 flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Desde</p>
-                <p className="text-2xl font-bold text-emerald-700">${servicio.precio_base.toFixed(2)}</p>
+                <p className="text-teal-200 text-sm">Desde</p>
+                <p className="text-3xl font-display font-bold">${servicio.precio_base.toFixed(2)}</p>
+                <p className="text-teal-200 text-xs mt-1">Precio final se acuerda en el chat</p>
               </div>
               <button
                 onClick={() => setMostrarSolicitud(true)}
-                className="bg-emerald-600 text-white font-semibold px-6 py-3 rounded-xl hover:bg-emerald-700 transition-colors"
+                className="bg-white text-teal-700 font-semibold px-7 py-3.5 rounded-xl
+                  hover:bg-teal-50 transition-all shadow-lg group"
               >
-                Solicitar servicio
+                <span className="flex items-center gap-2">
+                  Solicitar servicio
+                  <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </span>
               </button>
             </div>
-            <p className="text-xs text-gray-400 mt-2">Describe lo que necesitas y el profesional te contactará para acordar detalles y precio.</p>
           </div>
         )}
 
-        {/* Formulario de solicitud */}
+        {/* ── Request form ── */}
         {mostrarSolicitud && !enviado && (
-          <div className="bg-white rounded-xl border border-emerald-200 p-5 space-y-4">
-            <h2 className="font-semibold text-gray-900">Describe lo que necesitas</h2>
+          <div className="bg-white rounded-2xl border-2 border-teal-200 p-6 shadow-warm space-y-5 animate-in">
+            <div>
+              <h2 className="font-display font-bold text-stone-900 text-lg">Describe lo que necesitas</h2>
+              <p className="text-sm text-stone-500 mt-1">Mientras más detallado, mejor podrá ayudarte el profesional</p>
+            </div>
 
             <textarea
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
               rows={4}
-              placeholder="Detalla el trabajo que necesitas: qué tipo de trabajo, ubicación exacta, urgencia, detalles de acceso, etc."
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+              placeholder="Detalla el trabajo: tipo de trabajo, ubicación, urgencia, horario preferido, detalles de acceso..."
+              className="input-field !rounded-xl resize-none"
             />
 
             {paqueteSeleccionado && (
-              <div className="bg-emerald-50 rounded-lg p-3 text-sm">
-                <span className="text-emerald-700 font-medium">
-                  Paquete seleccionado: {paquetes.find((p) => p.id === paqueteSeleccionado)?.nombre}
-                </span>
-                <p className="text-emerald-600 text-xs mt-0.5">El precio final se acuerda en el chat</p>
+              <div className="flex items-center gap-3 bg-teal-50 rounded-xl p-4 border border-teal-100">
+                <div className="w-8 h-8 rounded-lg bg-teal-500 flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <span className="text-teal-700 font-semibold text-sm">
+                    Paquete: {paquetes.find((p) => p.id === paqueteSeleccionado)?.nombre}
+                  </span>
+                  <p className="text-teal-600 text-xs">El precio final se acuerda en el chat</p>
+                </div>
               </div>
             )}
 
             {userId && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Fotos de referencia <span className="text-gray-400 font-normal">(opcional)</span>
+                <label className="block text-sm font-medium text-stone-700 mb-2">
+                  Fotos de referencia <span className="text-stone-400 font-normal">(opcional)</span>
                 </label>
                 <ImageUpload
                   bucket="solicitudes"
@@ -347,70 +403,99 @@ export default function ServicioDetallePage() {
               </div>
             )}
 
-            <div className="bg-blue-50 rounded-lg border border-blue-200 p-3">
-              <p className="text-sm text-blue-800">
-                <span className="font-medium">¿Cómo funciona?</span> El profesional revisará tu solicitud.
-                Si la acepta, se abrirá un chat donde podrán acordar detalles, fecha y precio.
-                Solo pagas cuando estés de acuerdo con la cotización.
-              </p>
+            {/* How it works info */}
+            <div className="bg-amber-50 rounded-xl border border-amber-200/60 p-4 flex gap-3">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm text-amber-900 font-medium">¿Cómo funciona?</p>
+                <p className="text-sm text-amber-700 mt-0.5">
+                  El profesional revisará tu solicitud. Si la acepta, se abrirá un chat
+                  donde podrán acordar detalles, fecha y precio. Solo pagas cuando estés de acuerdo.
+                </p>
+              </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-1">
               <button
                 onClick={() => setMostrarSolicitud(false)}
-                className="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-200 transition-colors"
+                className="btn-secondary flex-1"
               >
                 Cancelar
               </button>
               <button
                 onClick={enviarSolicitud}
                 disabled={!descripcion.trim() || enviando}
-                className="flex-1 bg-emerald-600 text-white font-semibold py-3 rounded-xl hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {enviando ? 'Enviando...' : 'Enviar solicitud'}
+                {enviando ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Enviando...
+                  </span>
+                ) : 'Enviar solicitud'}
               </button>
             </div>
           </div>
         )}
 
-        {/* Confirmación */}
+        {/* ── Success confirmation ── */}
         {enviado && (
-          <div className="bg-white rounded-xl border border-emerald-200 p-5 text-center">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-3">
-              <svg className="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-white rounded-2xl border border-teal-200 p-8 text-center shadow-warm animate-in">
+            <div className="w-16 h-16 rounded-2xl bg-teal-50 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-lg font-bold text-gray-900">Solicitud enviada</h2>
-            <p className="text-gray-500 mt-1">
+            <h2 className="font-display text-xl font-bold text-stone-900">¡Solicitud enviada!</h2>
+            <p className="text-stone-500 mt-2 max-w-sm mx-auto">
               {servicio.proveedor?.nombre} recibirá tu solicitud y te responderá pronto.
+              Te notificaremos cuando haya novedades.
             </p>
-            <Link href="/mis-solicitudes" className="inline-block mt-4 text-emerald-600 font-medium hover:text-emerald-700">
+            <Link href="/mis-solicitudes" className="btn-primary mt-6 inline-flex">
               Ver mis solicitudes
             </Link>
           </div>
         )}
 
-        {/* Reseñas */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="font-semibold text-gray-900 mb-4">Reseñas {resenas.length > 0 && `(${resenas.length})`}</h2>
+        {/* ── Reviews ── */}
+        <div className="bg-white rounded-2xl border border-stone-200/80 p-6 shadow-warm">
+          <h2 className="font-display font-bold text-stone-900 mb-4">
+            Reseñas {resenas.length > 0 && <span className="text-stone-400 font-normal">({resenas.length})</span>}
+          </h2>
           {resenas.length === 0 ? (
-            <p className="text-gray-400 text-sm">Aún no hay reseñas</p>
+            <div className="text-center py-6">
+              <svg className="w-10 h-10 text-stone-200 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <p className="text-stone-400 text-sm">Aún no hay reseñas. ¡Sé el primero!</p>
+            </div>
           ) : (
             <div className="space-y-4">
               {resenas.map((r) => (
-                <div key={r.id} className="border-b border-gray-100 last:border-0 pb-4 last:pb-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm text-gray-900">{r.autor?.nombre}</span>
-                    <div className="flex gap-0.5">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <svg key={star} className={`w-3.5 h-3.5 ${star <= r.estrellas ? 'text-amber-400' : 'text-gray-200'} fill-current`} viewBox="0 0 20 20">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                      ))}
+                <div key={r.id} className="border-b border-stone-100 last:border-0 pb-4 last:pb-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-stone-100 flex items-center justify-center text-stone-600 font-semibold text-sm">
+                      {r.autor?.nombre?.[0] ?? '?'}
+                    </div>
+                    <div>
+                      <span className="font-medium text-sm text-stone-900">{r.autor?.nombre}</span>
+                      <div className="flex gap-0.5 mt-0.5">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <svg key={star} className={`w-3.5 h-3.5 ${star <= r.estrellas ? 'text-amber-400' : 'text-stone-200'} fill-current`} viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                          </svg>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                  {r.comentario && <p className="text-sm text-gray-600 mt-1">{r.comentario}</p>}
+                  {r.comentario && <p className="text-sm text-stone-600 mt-2 ml-11">{r.comentario}</p>}
                 </div>
               ))}
             </div>

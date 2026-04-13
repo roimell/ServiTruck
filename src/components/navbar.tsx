@@ -10,19 +10,21 @@ export default function Navbar() {
   const router = useRouter();
   const supabase = createClient();
   const [perfil, setPerfil] = useState<Perfil | null>(null);
+  const [cargando, setCargando] = useState(true);
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     async function cargarPerfil() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) { setCargando(false); return; }
       const { data } = await supabase
         .from('perfiles')
         .select('*')
         .eq('id', user.id)
         .single();
       if (data) setPerfil(data);
+      setCargando(false);
     }
     cargarPerfil();
   }, []);
@@ -89,7 +91,13 @@ export default function Navbar() {
             Buscar servicios
           </Link>
 
-          {perfil ? (
+          {cargando ? (
+            /* Skeleton while auth loads — prevents flash */
+            <div className="flex items-center gap-2 ml-2">
+              <div className="w-8 h-8 rounded-lg bg-stone-200 animate-pulse" />
+              <div className="w-16 h-4 rounded bg-stone-200 animate-pulse" />
+            </div>
+          ) : perfil ? (
             <div className="relative ml-2">
               <button
                 onClick={(e) => { e.stopPropagation(); setMenuAbierto(!menuAbierto); }}
