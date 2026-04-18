@@ -44,7 +44,21 @@ interface ServicioAdmin {
   created_at: string;
 }
 
-type Tab = 'proveedores' | 'servicios' | 'stats';
+interface FeedbackAdmin {
+  id: string;
+  tipo: string;
+  mensaje: string;
+  email: string | null;
+  nombre: string | null;
+  nps: number | null;
+  usuario_id: string | null;
+  dispositivo: string | null;
+  resuelto: boolean;
+  nota_admin: string | null;
+  created_at: string;
+}
+
+type Tab = 'proveedores' | 'servicios' | 'feedback';
 type FiltroProv = 'todos' | 'pendientes' | 'verificados' | 'desactivados';
 type FiltroServ = 'todos' | 'activos' | 'inactivos';
 
@@ -56,6 +70,8 @@ export default function AdminPage() {
   const [tab, setTab] = useState<Tab>('proveedores');
   const [proveedores, setProveedores] = useState<ProveedorAdmin[]>([]);
   const [servicios, setServicios] = useState<ServicioAdmin[]>([]);
+  const [feedback, setFeedback] = useState<FeedbackAdmin[]>([]);
+  const [filtroFb, setFiltroFb] = useState<'pendientes' | 'resueltos' | 'todos'>('pendientes');
   const [filtroProv, setFiltroProv] = useState<FiltroProv>('pendientes');
   const [filtroServ, setFiltroServ] = useState<FiltroServ>('todos');
   const [busqueda, setBusqueda] = useState('');
@@ -73,7 +89,7 @@ export default function AdminPage() {
       if (!perfil?.es_admin) { router.push('/'); return; }
 
       setEsAdmin(true);
-      await Promise.all([cargarProveedores(), cargarServicios(), cargarStats()]);
+      await Promise.all([cargarProveedores(), cargarServicios(), cargarStats(), cargarFeedback()]);
       setCargando(false);
     })();
   }, []);
@@ -86,6 +102,20 @@ export default function AdminPage() {
   async function cargarServicios() {
     const { data } = await supabase.rpc('admin_listar_servicios', { p_solo_activos: null });
     if (data) setServicios(data);
+  }
+
+  async function cargarFeedback() {
+    const { data } = await supabase.rpc('admin_listar_feedback', { p_tipo: null, p_solo_pendientes: false, p_limite: 200 });
+    if (data) setFeedback(data);
+  }
+
+  async function marcarResuelto(id: string, resuelto: boolean, nota?: string) {
+    const { error } = await supabase
+      .from('feedback_usuarios')
+      .update({ resuelto, nota_admin: nota || null })
+      .eq('id', id);
+    if (error) { alert('Error: ' + error.message); return; }
+    await cargarFeedback();
   }
 
   async function cargarStats() {
@@ -212,6 +242,7 @@ export default function AdminPage() {
           {([
             { id: 'proveedores', label: `Proveedores (${proveedores.filter((p) => p.es_proveedor).length})` },
             { id: 'servicios', label: `Servicios (${servicios.length})` },
+            { id: 'feedback', label: `Feedback (${feedback.filter((f) => !f.resuelto).length})` },
           ] as const).map((t) => (
             <button
               key={t.id}
@@ -429,6 +460,100 @@ export default function AdminPage() {
               )}
             </div>
           </div>
+        )}
+        {/* FEEDBACK TABLE */}
+        {tab === 'feedback' && (
+          <>
+            <div className="flex gap-2 mb-4 flex-wrap">
+              {(['pendientes', 'resueltos', 'todos'] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFiltroFb(f)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors ${
+                    filtroFb === f ? 'bg-purple-600 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+
+            <div className="bg-white rounded-2xl border border-stone-200/80 overflow-hidden">
+              <div className="divide-y divide-stone-100">
+                {feedback
+                  .filter((f) => {
+                    if (filtroFb === 'pendientes' && f.resuelto) return false;
+                    if (filtroFb === 'resueltos' && !f.resuelto) return false;
+                    if (busqueda) {
+                      const q = busqueda.toLowerCase();
+                      return (
+                        f.mensaje.toLowerCase().includes(q) ||
+                        (f.email?.toLowerCase() || '').includes(q) ||
+                        (f.nombre?.toLowerCase() || '').includes(q) ||
+                        f.tipo.toLowerCase().includes(q)
+                      );
+                    }
+                    return true;
+                  })
+                  .map((f) => (
+                    <div key={f.id} className="p-4 md:p-5 hover:bg-stone-50/50">
+                      <div className="flex items-start justify-between gap-3 mb-2 flex-wrap">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[10px] font-bold uppercase tracking-wide bg-stone-100 text-stone-700 px-2 py-0.5 rounded-full">
+                            {f.tipo}
+                          </span>
+                          {f.nps != null && (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              f.nps >= 9 ? 'bg-emerald-100 text-emerald-700' :
+                              f.nps >= 7 ? 'bg-amber-100 text-amber-700' :
+                              'bg-red-100 text-red-700'
+                            }`}>
+                              NPS {f.nps}
+                            </span>
+                          )}
+                          {f.dispositivo && (
+                            <span className="text-[10px] text-stone-500">📱 {f.dispositivo}</span>
+                          )}
+                          <span className="text-[10px] text-stone-400">
+                            {new Date(f.created_at).toLocaleString('es-PA', { dateStyle: 'short', timeStyle: 'short' })}
+                          </span>
+                        </div>
+                        {f.resuelto ? (
+                          <button
+                            onClick={() => marcarResuelto(f.id, false)}
+                            className="text-xs bg-stone-100 text-stone-700 px-2.5 py-1 rounded-lg hover:bg-stone-200"
+                          >
+                            Reabrir
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => marcarResuelto(f.id, true)}
+                            className="text-xs bg-emerald-600 text-white px-2.5 py-1 rounded-lg hover:bg-emerald-700"
+                          >
+                            ✓ Marcar resuelto
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-sm text-stone-800 leading-relaxed whitespace-pre-wrap mb-2">{f.mensaje}</p>
+                      {(f.nombre || f.email) && (
+                        <p className="text-xs text-stone-500">
+                          {f.nombre && <span>👤 {f.nombre}</span>}
+                          {f.nombre && f.email && <span> · </span>}
+                          {f.email && (
+                            <a href={`mailto:${f.email}`} className="text-teal-700 hover:underline">
+                              ✉️ {f.email}
+                            </a>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+              </div>
+              {feedback.filter((f) => filtroFb === 'todos' || (filtroFb === 'pendientes' ? !f.resuelto : f.resuelto)).length === 0 && (
+                <div className="py-12 text-center text-stone-400 text-sm">Sin feedback que mostrar.</div>
+              )}
+            </div>
+          </>
         )}
       </div>
 

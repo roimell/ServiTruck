@@ -410,27 +410,63 @@ export default function HomePage() {
 
       {/* ── Footer ── */}
       <footer className="bg-white border-t border-stone-200/60">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-600 to-teal-700 flex items-center justify-center">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
+            {/* Brand */}
+            <div>
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-teal-600 to-teal-700 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                </div>
+                <span className="font-display font-bold text-stone-900 text-lg">
+                  Servi<span className="text-teal-600">Trust</span>
+                </span>
               </div>
-              <span className="font-display font-bold text-stone-900">
-                Servi<span className="text-teal-600">Trust</span>
-              </span>
+              <p className="text-sm text-stone-600 leading-relaxed">
+                Conectamos a Panamá con profesionales de confianza. Precios claros, reseñas reales.
+              </p>
             </div>
 
-            <div className="flex items-center gap-6 text-sm text-stone-400">
-              <Link href="/buscar" className="hover:text-stone-600 transition-colors">Buscar</Link>
-              <Link href="/auth/registro" className="hover:text-stone-600 transition-colors">Registrarse</Link>
+            {/* Plataforma */}
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-stone-900 mb-3">Plataforma</p>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="/buscar" className="text-stone-600 hover:text-teal-700 transition-colors">Buscar servicios</Link></li>
+                <li><Link href="/auth/registro" className="text-stone-600 hover:text-teal-700 transition-colors">Registrarse</Link></li>
+                <li><Link href="/auth/login" className="text-stone-600 hover:text-teal-700 transition-colors">Iniciar sesión</Link></li>
+              </ul>
             </div>
 
-            <p className="text-xs text-stone-500">
-              &copy; {new Date().getFullYear()} ServiTrust Panamá
-            </p>
+            {/* Empresa */}
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-stone-900 mb-3">ServiTrust</p>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="/acerca" className="text-stone-600 hover:text-teal-700 transition-colors">Sobre nosotros</Link></li>
+                <li>
+                  <Link href="/feedback" className="text-stone-600 hover:text-teal-700 transition-colors inline-flex items-center gap-1.5">
+                    Feedback
+                    <span className="text-[10px] font-bold bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded-full">Queremos oírte</span>
+                  </Link>
+                </li>
+                <li><Link href="/acerca#roadmap" className="text-stone-600 hover:text-teal-700 transition-colors">Roadmap</Link></li>
+              </ul>
+            </div>
+
+            {/* Legal */}
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-stone-900 mb-3">Legal</p>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="/terminos" className="text-stone-600 hover:text-teal-700 transition-colors">Términos y Condiciones</Link></li>
+                <li><Link href="/privacidad" className="text-stone-600 hover:text-teal-700 transition-colors">Política de Privacidad</Link></li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 border-t border-stone-100 text-xs text-stone-500">
+            <p>&copy; {new Date().getFullYear()} ServiTrust Panamá. Hecho con 🇵🇦 en Panamá.</p>
+            <p>Plataforma en fase beta — tu opinión construye el producto.</p>
           </div>
         </div>
       </footer>
