@@ -121,8 +121,20 @@ export default function Navbar() {
               {menuAbierto && (
                 <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-warm-lg border border-stone-200/80 py-2 animate-scale-in origin-top-right">
                   <div className="px-4 py-2 border-b border-stone-100">
-                    <p className="text-sm font-medium text-stone-900">{perfil.nombre}</p>
-                    <p className="text-xs text-stone-400 truncate">{perfil.es_proveedor ? 'Proveedor verificado' : 'Cliente'}</p>
+                    <p className="text-sm font-medium text-stone-900 flex items-center gap-1.5">
+                      {perfil.nombre}
+                      {perfil.verificado && (
+                        <svg className="w-4 h-4 text-teal-600" fill="currentColor" viewBox="0 0 20 20" aria-label="Verificado"><title>Verificado</title>
+                          <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                      {perfil.es_admin && (
+                        <span className="text-[9px] font-bold bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">ADMIN</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-stone-400 truncate">
+                      {perfil.es_proveedor ? (perfil.verificado ? 'Proveedor verificado' : 'Proveedor') : 'Cliente'}
+                    </p>
                   </div>
                   {perfil.es_proveedor && (
                     <Link
@@ -146,6 +158,28 @@ export default function Navbar() {
                     </svg>
                     Mis Solicitudes
                   </Link>
+                  <Link
+                    href="/perfil"
+                    onClick={() => setMenuAbierto(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
+                  >
+                    <svg className="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Mi Perfil
+                  </Link>
+                  {perfil.es_admin && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setMenuAbierto(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-purple-700 hover:bg-purple-50 transition-colors"
+                    >
+                      <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                      Panel Admin
+                    </Link>
+                  )}
                   <div className="border-t border-stone-100 mt-1 pt-1">
                     <button
                       onClick={cerrarSesion}

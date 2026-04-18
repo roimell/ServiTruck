@@ -125,6 +125,14 @@
     to { opacity: 1; }
   }
 
+  .animate-slide-in-right {
+    animation: slide-in-right 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  @keyframes slide-in-right {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
   /* Subtle float animation */
   .float {
     animation: float 6s ease-in-out infinite;
@@ -158,11 +166,19 @@
   }
 
   /* Smooth input focus */
-  .input-field {
+  .input-field,
+  .input {
     @apply w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-stone-900 placeholder-stone-400
            transition-all duration-200
            focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500
            hover:border-stone-300;
+  }
+
+  /* Ghost button */
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 font-medium px-4 py-2 rounded-xl
+           text-stone-700 bg-stone-100 border border-stone-200 transition-all duration-200
+           hover:bg-stone-200;
   }
 
   /* Primary button with subtle gradient */

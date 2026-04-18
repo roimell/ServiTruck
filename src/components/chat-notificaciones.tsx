@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import { ESTADOS_CHAT_ACTIVO } from '@/types/database';
 import type { EstadoTrabajo } from '@/types/database';
+import ChatTrabajo from '@/components/chat-trabajo';
 
 interface ChatConversacion {
   trabajo_id: string;
@@ -23,6 +24,7 @@ export default function ChatNotificaciones() {
   const [conversaciones, setConversaciones] = useState<ChatConversacion[]>([]);
   const [abierto, setAbierto] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [chatActivo, setChatActivo] = useState<{ trabajoId: string; estado: EstadoTrabajo } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   const totalNoLeidos = conversaciones.reduce((sum, c) => sum + c.no_leidos, 0);
@@ -241,11 +243,16 @@ export default function ChatNotificaciones() {
               </div>
             ) : (
               conversaciones.map((c) => (
-                <Link
+                <button
                   key={c.trabajo_id}
-                  href={c.es_proveedor ? `/dashboard?chat=${c.trabajo_id}` : `/mis-solicitudes?chat=${c.trabajo_id}`}
-                  onClick={() => setAbierto(false)}
-                  className={`flex items-start gap-3 px-4 py-3 hover:bg-stone-50 transition-colors border-b border-stone-50 last:border-b-0 ${
+                  type="button"
+                  onClick={() => {
+                    setChatActivo({ trabajoId: c.trabajo_id, estado: c.estado });
+                    setAbierto(false);
+                    // Optimistic: mark as read locally
+                    setConversaciones((prev) => prev.map((x) => x.trabajo_id === c.trabajo_id ? { ...x, no_leidos: 0 } : x));
+                  }}
+                  className={`w-full text-left flex items-start gap-3 px-4 py-3 hover:bg-stone-50 transition-colors border-b border-stone-50 last:border-b-0 ${
                     c.no_leidos > 0 ? 'bg-teal-50/40' : ''
                   }`}
                 >
@@ -285,7 +292,7 @@ export default function ChatNotificaciones() {
                       </div>
                     </div>
                   </div>
-                </Link>
+                </button>
               ))
             )}
           </div>
@@ -303,6 +310,23 @@ export default function ChatNotificaciones() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Inline Chat Drawer */}
+      {chatActivo && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 z-40 animate-in"
+            onClick={() => setChatActivo(null)}
+          />
+          <ChatTrabajo
+            key={chatActivo.trabajoId}
+            trabajoId={chatActivo.trabajoId}
+            estadoTrabajo={chatActivo.estado}
+            modoDrawer
+            onClose={() => { setChatActivo(null); cargarConversaciones(); }}
+          />
+        </>
       )}
     </div>
   );

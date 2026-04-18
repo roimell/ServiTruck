@@ -19,9 +19,13 @@ interface ChatTrabajoProps {
   trabajoId: string;
   estadoTrabajo: EstadoTrabajo;
   onEstadoCambiado?: () => void;
+  /** Si true, renderiza inline (drawer) sin botón flotante. */
+  modoDrawer?: boolean;
+  /** Callback al cerrar (solo en modoDrawer) */
+  onClose?: () => void;
 }
 
-export default function ChatTrabajo({ trabajoId, estadoTrabajo, onEstadoCambiado }: ChatTrabajoProps) {
+export default function ChatTrabajo({ trabajoId, estadoTrabajo, onEstadoCambiado, modoDrawer, onClose }: ChatTrabajoProps) {
   const supabase = createClient();
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>([]);
@@ -31,7 +35,7 @@ export default function ChatTrabajo({ trabajoId, estadoTrabajo, onEstadoCambiado
   const [esProveedor, setEsProveedor] = useState(false);
   const [otroPerfil, setOtroPerfil] = useState<Pick<Perfil, 'nombre' | 'avatar_url'> | null>(null);
   const [enviando, setEnviando] = useState(false);
-  const [abierto, setAbierto] = useState(false);
+  const [abierto, setAbierto] = useState(modoDrawer ? true : false);
   const [noLeidos, setNoLeidos] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -272,38 +276,46 @@ export default function ChatTrabajo({ trabajoId, estadoTrabajo, onEstadoCambiado
     return acc;
   }, {});
 
+  const panelClass = modoDrawer
+    ? 'fixed inset-y-0 right-0 w-full sm:w-[420px] bg-white shadow-2xl border-l border-stone-200 flex flex-col z-50 overflow-hidden animate-slide-in-right'
+    : 'fixed bottom-24 right-6 w-80 md:w-96 h-[32rem] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col z-40 overflow-hidden';
+
   return (
     <>
-      {/* Botón flotante del chat */}
-      <button
-        onClick={() => setAbierto(!abierto)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-emerald-600 text-white rounded-full shadow-lg hover:bg-emerald-700 transition-all flex items-center justify-center z-40"
-      >
-        {abierto ? (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        ) : (
-          <>
+      {/* Botón flotante (solo si no es drawer) */}
+      {!modoDrawer && (
+        <button
+          onClick={() => setAbierto(!abierto)}
+          className="fixed bottom-6 right-6 w-14 h-14 bg-emerald-600 text-white rounded-full shadow-lg hover:bg-emerald-700 transition-all flex items-center justify-center z-40"
+        >
+          {abierto ? (
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
-            {noLeidos > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                {noLeidos > 9 ? '9+' : noLeidos}
-              </span>
-            )}
-          </>
-        )}
-      </button>
+          ) : (
+            <>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              {noLeidos > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                  {noLeidos > 9 ? '9+' : noLeidos}
+                </span>
+              )}
+            </>
+          )}
+        </button>
+      )}
 
       {/* Panel del chat */}
       {abierto && (
-        <div className="fixed bottom-24 right-6 w-80 md:w-96 h-[32rem] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col z-40 overflow-hidden">
+        <div className={panelClass}>
           {/* Header */}
           <div className="bg-emerald-600 text-white px-4 py-3 flex items-center gap-3 shrink-0">
-            <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-sm font-bold">
-              {otroPerfil?.nombre?.[0] ?? '?'}
+            <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center text-sm font-bold overflow-hidden">
+              {otroPerfil?.avatar_url
+                ? <img src={otroPerfil.avatar_url} alt="" className="w-full h-full object-cover" />
+                : (otroPerfil?.nombre?.[0] ?? '?')}
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm truncate">{otroPerfil?.nombre ?? 'Chat'}</p>
@@ -314,6 +326,17 @@ export default function ChatTrabajo({ trabajoId, estadoTrabajo, onEstadoCambiado
                  'Chat del servicio'}
               </p>
             </div>
+            {modoDrawer && (
+              <button
+                onClick={() => { setAbierto(false); onClose?.(); }}
+                className="w-8 h-8 rounded-lg hover:bg-emerald-500/60 flex items-center justify-center transition-colors"
+                aria-label="Cerrar"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
           </div>
 
           {/* Mensajes */}

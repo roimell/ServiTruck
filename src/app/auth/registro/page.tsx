@@ -150,14 +150,14 @@ export default function RegistroPage() {
                 ]
               : esProveedor
                 ? [
-                    'Cobro asegurado por cada trabajo',
+                    'Clientes reales buscando en tu zona',
                     'Perfil profesional con reseñas reales',
                     'Datos de demanda exclusivos en tu zona',
                   ]
                 : [
                     'Profesionales verificados con reseñas',
-                    'Pago protegido hasta que estés satisfecho',
                     'Chat directo y cotización transparente',
+                    'Agenda rápida y sin intermediarios',
                   ]
             ).map((item, i) => (
               <div key={i} className="flex items-center gap-3">

@@ -177,7 +177,7 @@ export function TarjetaCotizacion({
 
       <p className="text-xl font-bold text-emerald-700 mt-2">${cotizacion.monto.toFixed(2)}</p>
       <p className="text-xs text-gray-400">
-        Comisión de servicio incluida. Pago protegido en custodia.
+        Precio acordado entre cliente y proveedor.
       </p>
 
       {esCliente && cotizacion.estado === 'pendiente' && (

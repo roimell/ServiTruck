@@ -10,8 +10,20 @@ import ImageUpload from '@/components/image-upload';
 import type { Servicio, Perfil, Resena, Categoria, PaqueteServicio, DisponibilidadSemanal } from '@/types/database';
 import { DIAS_SEMANA } from '@/types/database';
 
+interface ProveedorDetalle extends Pick<Perfil, 'id' | 'nombre' | 'avatar_url' | 'corregimiento'> {
+  verificado?: boolean;
+  nombre_comercial?: string | null;
+  bio?: string | null;
+  anos_experiencia?: number | null;
+  certificaciones?: string[];
+  idiomas?: string[];
+  area_cobertura?: string[];
+  rating_promedio?: number;
+  total_resenas?: number;
+}
+
 interface ServicioDetalle extends Servicio {
-  proveedor: Pick<Perfil, 'id' | 'nombre' | 'avatar_url' | 'corregimiento'>;
+  proveedor: ProveedorDetalle;
   categoria_rel: Categoria | null;
 }
 
@@ -65,7 +77,7 @@ export default function ServicioDetallePage() {
       const [servicioRes, paquetesRes, , resenasRes] = await Promise.all([
         supabase
           .from('servicios')
-          .select('*, proveedor:perfiles!proveedor_id(id, nombre, avatar_url, corregimiento), categoria_rel:categorias(*)')
+          .select('*, proveedor:perfiles!proveedor_id(id, nombre, avatar_url, corregimiento, verificado, nombre_comercial, bio, anos_experiencia, certificaciones, idiomas, area_cobertura, rating_promedio, total_resenas), categoria_rel:categorias(*)')
           .eq('id', servicioId)
           .single(),
         supabase
@@ -240,12 +252,24 @@ export default function ServicioDetallePage() {
         {/* ── Header card ── */}
         <div className="bg-white rounded-2xl border border-stone-200/80 p-6 shadow-warm">
           <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white font-bold text-xl shrink-0 shadow-sm">
-              {servicio.proveedor?.nombre?.[0] ?? 'P'}
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white font-bold text-xl shrink-0 shadow-sm overflow-hidden">
+              {servicio.proveedor?.avatar_url
+                ? <img src={servicio.proveedor.avatar_url} alt="" className="w-full h-full object-cover" />
+                : (servicio.proveedor?.nombre?.[0] ?? 'P')}
             </div>
             <div className="flex-1 min-w-0">
               <h1 className="font-display text-xl sm:text-2xl font-bold text-stone-900">{servicio.titulo}</h1>
-              <p className="text-stone-500 font-medium">{servicio.proveedor?.nombre}</p>
+              <p className="text-stone-500 font-medium flex items-center gap-1.5">
+                {servicio.proveedor?.nombre_comercial || servicio.proveedor?.nombre}
+                {servicio.proveedor?.verificado && (
+                  <span className="inline-flex items-center gap-0.5 bg-teal-100 text-teal-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    VERIFICADO
+                  </span>
+                )}
+              </p>
               <div className="flex flex-wrap items-center gap-3 mt-2">
                 <span className="flex items-center gap-1 text-sm text-stone-500">
                   <svg className="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -257,6 +281,11 @@ export default function ServicioDetallePage() {
                 {servicio.categoria_rel && (
                   <span className="px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 text-xs font-medium">
                     {servicio.categoria_rel.nombre}
+                  </span>
+                )}
+                {servicio.proveedor?.anos_experiencia != null && servicio.proveedor.anos_experiencia > 0 && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">
+                    {servicio.proveedor.anos_experiencia} años de experiencia
                   </span>
                 )}
               </div>
@@ -283,6 +312,61 @@ export default function ServicioDetallePage() {
           <div className="bg-white rounded-2xl border border-stone-200/80 p-6 shadow-warm">
             <h2 className="font-display font-bold text-stone-900 mb-3">Descripción</h2>
             <p className="text-stone-600 leading-relaxed whitespace-pre-line">{servicio.descripcion}</p>
+          </div>
+        )}
+
+        {/* ── Sobre el profesional ── */}
+        {(servicio.proveedor?.bio ||
+          (servicio.proveedor?.certificaciones && servicio.proveedor.certificaciones.length > 0) ||
+          (servicio.proveedor?.idiomas && servicio.proveedor.idiomas.length > 0) ||
+          (servicio.proveedor?.area_cobertura && servicio.proveedor.area_cobertura.length > 0)) && (
+          <div className="bg-white rounded-2xl border border-stone-200/80 p-6 shadow-warm">
+            <h2 className="font-display font-bold text-stone-900 mb-4">Sobre el profesional</h2>
+
+            {servicio.proveedor.bio && (
+              <p className="text-stone-600 leading-relaxed whitespace-pre-line mb-4">{servicio.proveedor.bio}</p>
+            )}
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              {servicio.proveedor.certificaciones && servicio.proveedor.certificaciones.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-stone-400 mb-2">🏆 Certificaciones</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {servicio.proveedor.certificaciones.map((c, i) => (
+                      <span key={i} className="text-xs font-medium bg-teal-50 text-teal-700 px-2.5 py-1 rounded-full">
+                        {c}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {servicio.proveedor.idiomas && servicio.proveedor.idiomas.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-stone-400 mb-2">🗣️ Idiomas</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {servicio.proveedor.idiomas.map((i, k) => (
+                      <span key={k} className="text-xs font-medium bg-stone-100 text-stone-700 px-2.5 py-1 rounded-full">
+                        {i}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {servicio.proveedor.area_cobertura && servicio.proveedor.area_cobertura.length > 0 && (
+                <div className="sm:col-span-2">
+                  <p className="text-xs font-bold uppercase tracking-wide text-stone-400 mb-2">📍 Áreas de cobertura</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {servicio.proveedor.area_cobertura.map((a, i) => (
+                      <span key={i} className="text-xs font-medium bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full">
+                        {a}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

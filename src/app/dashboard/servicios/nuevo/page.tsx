@@ -15,6 +15,14 @@ const CORREGIMIENTOS = [
   'Arraiján', 'La Chorrera', 'Colón', 'David', 'Santiago',
 ];
 
+const CATEGORY_ICONS: Record<string, string> = {
+  'Electricidad': '⚡', 'Plomería': '🔧', 'Limpieza': '✨', 'Pintura': '🎨',
+  'Cerrajería': '🔑', 'Mudanzas': '📦', 'Jardinería': '🌿', 'Aire Acondicionado': '❄️',
+  'Albañilería': '🧱', 'Tecnología': '💻',
+};
+
+type Paso = 1 | 2 | 3;
+
 export default function NuevoServicioPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -23,16 +31,15 @@ export default function NuevoServicioPage() {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
   const [userId, setUserId] = useState<string>('');
+  const [paso, setPaso] = useState<Paso>(1);
 
-  // Form state
+  // Form
   const [titulo, setTitulo] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [categoriaId, setCategoriaId] = useState<number | null>(null);
   const [precioBase, setPrecioBase] = useState('');
   const [corregimiento, setCorregimiento] = useState('');
   const [fotos, setFotos] = useState<string[]>([]);
-
-  // Paquetes inline
   const [paquetes, setPaquetes] = useState<{ nombre: string; descripcion: string; precio: string }[]>([]);
 
   useEffect(() => {
@@ -44,42 +51,45 @@ export default function NuevoServicioPage() {
     });
   }, []);
 
-  function agregarPaquete() {
-    setPaquetes([...paquetes, { nombre: '', descripcion: '', precio: '' }]);
-  }
-
-  function actualizarPaquete(idx: number, campo: string, valor: string) {
-    setPaquetes(prev => prev.map((p, i) => i === idx ? { ...p, [campo]: valor } : p));
-  }
-
-  function eliminarPaquete(idx: number) {
-    setPaquetes(prev => prev.filter((_, i) => i !== idx));
-  }
-
-  async function guardar(e: React.FormEvent) {
-    e.preventDefault();
-    setError('');
-
-    if (!titulo.trim() || !categoriaId || !precioBase || !corregimiento) {
-      setError('Completa todos los campos obligatorios.');
-      return;
+  function validarPaso(p: Paso): string | null {
+    if (p === 1) {
+      if (!categoriaId) return 'Selecciona una categoría';
+      if (!titulo.trim() || titulo.trim().length < 8) return 'Dale un título claro (mínimo 8 caracteres)';
     }
+    if (p === 2) {
+      if (!descripcion.trim() || descripcion.trim().length < 30) return 'Describe tu servicio (mínimo 30 caracteres)';
+      if (!corregimiento) return 'Selecciona una zona';
+      if (!precioBase || Number(precioBase) <= 0) return 'Indica un precio base válido';
+    }
+    return null;
+  }
+
+  function avanzar() {
+    const err = validarPaso(paso);
+    if (err) { setError(err); return; }
+    setError('');
+    setPaso((p) => Math.min(3, p + 1) as Paso);
+  }
+
+  async function publicar() {
+    setError('');
+    const err1 = validarPaso(1) || validarPaso(2);
+    if (err1) { setError(err1); return; }
 
     setGuardando(true);
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setError('Debes iniciar sesión.'); setGuardando(false); return; }
+    if (!user) { setError('Inicia sesión'); setGuardando(false); return; }
 
-    const catSeleccionada = categorias.find(c => c.id === categoriaId);
+    const catSel = categorias.find((c) => c.id === categoriaId);
 
-    // Crear servicio
-    const { data: servicio, error: errServicio } = await supabase
+    const { data: servicio, error: errServ } = await supabase
       .from('servicios')
       .insert({
         proveedor_id: user.id,
         titulo: titulo.trim(),
         descripcion: descripcion.trim() || null,
-        categoria: catSeleccionada?.nombre || '',
+        categoria: catSel?.nombre || '',
         categoria_id: categoriaId,
         precio_base: Number(precioBase),
         corregimiento,
@@ -88,17 +98,16 @@ export default function NuevoServicioPage() {
       .select()
       .single();
 
-    if (errServicio || !servicio) {
-      setError(errServicio?.message || 'Error al crear el servicio.');
+    if (errServ || !servicio) {
+      setError(errServ?.message || 'Error al crear el servicio');
       setGuardando(false);
       return;
     }
 
-    // Crear paquetes si hay
-    const paquetesValidos = paquetes.filter(p => p.nombre.trim() && p.precio && Number(p.precio) > 0);
-    if (paquetesValidos.length > 0) {
+    const valid = paquetes.filter((p) => p.nombre.trim() && p.precio && Number(p.precio) > 0);
+    if (valid.length > 0) {
       await supabase.from('paquetes_servicio').insert(
-        paquetesValidos.map((p, i) => ({
+        valid.map((p, i) => ({
           servicio_id: servicio.id,
           nombre: p.nombre.trim(),
           descripcion: p.descripcion.trim() || null,
@@ -111,234 +120,287 @@ export default function NuevoServicioPage() {
     router.push(`/dashboard/servicios/${servicio.id}`);
   }
 
+  const catSel = categorias.find((c) => c.id === categoriaId);
+  const pasos = [
+    { n: 1, label: 'Categoría', icon: '🏷️' },
+    { n: 2, label: 'Detalles', icon: '📝' },
+    { n: 3, label: 'Fotos y paquetes', icon: '📸' },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[var(--color-warm-bg)]">
       <Navbar />
 
-      <main className="max-w-2xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <button
-            onClick={() => router.back()}
-            className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 mb-3 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Volver al dashboard
-          </button>
-          <h1 className="text-2xl font-bold text-gray-900">Publicar nuevo servicio</h1>
-          <p className="text-gray-500 mt-1">Completa la información para que los clientes te encuentren.</p>
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+        <button onClick={() => router.back()} className="text-sm text-stone-400 hover:text-stone-600 mb-4 inline-flex items-center gap-1">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Volver
+        </button>
+
+        <h1 className="font-display text-3xl md:text-4xl font-bold text-stone-900 mb-1">Publicar servicio</h1>
+        <p className="text-stone-500 text-sm mb-8">En 3 pasos rápidos tu servicio estará visible para clientes en Panamá.</p>
+
+        {/* Stepper */}
+        <div className="flex items-center gap-2 mb-8">
+          {pasos.map((p, i) => (
+            <div key={p.n} className="flex items-center flex-1">
+              <div className={`flex items-center gap-2 ${paso >= p.n ? 'text-teal-700' : 'text-stone-400'}`}>
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+                  paso === p.n ? 'bg-teal-600 text-white ring-4 ring-teal-100' :
+                  paso > p.n ? 'bg-teal-600 text-white' : 'bg-stone-100 text-stone-400'
+                }`}>
+                  {paso > p.n ? '✓' : p.n}
+                </div>
+                <div className="hidden sm:block">
+                  <p className="text-xs font-semibold uppercase tracking-wide">Paso {p.n}</p>
+                  <p className="text-sm font-medium">{p.label}</p>
+                </div>
+              </div>
+              {i < pasos.length - 1 && (
+                <div className={`flex-1 h-0.5 mx-2 rounded-full transition-colors ${paso > p.n ? 'bg-teal-600' : 'bg-stone-200'}`} />
+              )}
+            </div>
+          ))}
         </div>
 
-        <form onSubmit={guardar} className="space-y-6">
-          {/* Info básica */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-              <span className="w-6 h-6 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold flex items-center justify-center">1</span>
-              Información del servicio
-            </h2>
+        <div className="grid lg:grid-cols-[1fr_340px] gap-6">
+          <div className="bg-white rounded-2xl border border-stone-200/80 p-6 md:p-8">
+            {/* ── Paso 1: CATEGORÍA + TÍTULO ── */}
+            {paso === 1 && (
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-stone-900 mb-1">¿Qué tipo de servicio ofreces? *</label>
+                  <p className="text-xs text-stone-500 mb-4">Selecciona la categoría principal.</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    {categorias.map((c) => {
+                      const sel = categoriaId === c.id;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setCategoriaId(c.id)}
+                          className={`flex items-center gap-2 px-3 py-3 rounded-xl border transition-all text-sm text-left ${
+                            sel ? 'bg-teal-50 border-teal-500 ring-2 ring-teal-100 text-teal-900 font-semibold'
+                                : 'bg-white border-stone-200 text-stone-700 hover:border-stone-300'
+                          }`}
+                        >
+                          <span className="text-lg">{CATEGORY_ICONS[c.nombre] || '🛠️'}</span>
+                          <span className="truncate">{c.nombre}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Título del servicio <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={titulo}
-                onChange={(e) => setTitulo(e.target.value)}
-                placeholder="Ej: Reparación de aires acondicionados"
-                maxLength={120}
-                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow"
-              />
-              <p className="text-xs text-gray-400 mt-1">{titulo.length}/120 caracteres</p>
-            </div>
+                <div>
+                  <label className="block text-sm font-semibold text-stone-900 mb-1">Título del servicio *</label>
+                  <p className="text-xs text-stone-500 mb-2">Sé específico. Un buen título convierte 3× más.</p>
+                  <input
+                    type="text"
+                    value={titulo}
+                    onChange={(e) => setTitulo(e.target.value)}
+                    placeholder={catSel ? `Ej: ${catSel.nombre} residencial 24/7` : 'Ej: Reparación de aires acondicionados'}
+                    maxLength={120}
+                    className="input"
+                  />
+                  <div className="flex justify-between mt-1">
+                    <span className="text-xs text-stone-400">💡 Incluye qué haces y a quién</span>
+                    <span className="text-xs text-stone-400">{titulo.length}/120</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-              <textarea
-                value={descripcion}
-                onChange={(e) => setDescripcion(e.target.value)}
-                rows={4}
-                placeholder="Describe qué incluye tu servicio, tu experiencia, herramientas que usas..."
-                maxLength={1000}
-                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none transition-shadow"
-              />
-              <p className="text-xs text-gray-400 mt-1">{descripcion.length}/1000 caracteres</p>
-            </div>
+            {/* ── Paso 2: DETALLES ── */}
+            {paso === 2 && (
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-stone-900 mb-1">Descripción *</label>
+                  <p className="text-xs text-stone-500 mb-2">Cuenta qué incluye, tu experiencia y qué te hace especial.</p>
+                  <textarea
+                    value={descripcion}
+                    onChange={(e) => setDescripcion(e.target.value)}
+                    rows={6}
+                    placeholder="Ej: Servicio profesional de electricidad residencial con 10 años de experiencia. Incluye..."
+                    maxLength={1000}
+                    className="input resize-none"
+                  />
+                  <div className="flex justify-between mt-1">
+                    <span className="text-xs text-stone-400">{descripcion.length < 30 ? `⚠️ mínimo 30 caracteres` : '✓ buena longitud'}</span>
+                    <span className="text-xs text-stone-400">{descripcion.length}/1000</span>
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Categoría <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={categoriaId ?? ''}
-                  onChange={(e) => setCategoriaId(e.target.value ? Number(e.target.value) : null)}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white transition-shadow"
-                >
-                  <option value="">Selecciona...</option>
-                  {categorias.map((c) => (
-                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-stone-900 mb-1">Zona principal *</label>
+                    <select value={corregimiento} onChange={(e) => setCorregimiento(e.target.value)} className="input">
+                      <option value="">Selecciona...</option>
+                      {CORREGIMIENTOS.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <p className="text-xs text-stone-400 mt-1">Amplía tu cobertura desde tu perfil.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-stone-900 mb-1">Precio base (USD) *</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 font-medium">$</span>
+                      <input
+                        type="number"
+                        value={precioBase}
+                        onChange={(e) => setPrecioBase(e.target.value)}
+                        placeholder="0.00"
+                        min="1"
+                        step="0.01"
+                        className="input !pl-8"
+                      />
+                    </div>
+                    <p className="text-xs text-stone-400 mt-1">Desde cuánto. Se negocia en el chat.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Paso 3: FOTOS + PAQUETES ── */}
+            {paso === 3 && (
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-stone-900 mb-1">Fotos del servicio</label>
+                  <p className="text-xs text-stone-500 mb-3">💡 Servicios con fotos reciben 5× más solicitudes. Máx 5 fotos.</p>
+                  {userId && (
+                    <ImageUpload bucket="servicios" userId={userId} value={fotos} onChange={setFotos} maxImages={5} maxSizeMB={5} publicBucket />
+                  )}
+                </div>
+
+                <div className="border-t border-stone-100 pt-6">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-semibold text-stone-900">Paquetes de servicio</label>
+                    <span className="text-xs text-stone-400">Opcional</span>
+                  </div>
+                  <p className="text-xs text-stone-500 mb-4">Ofrece opciones (Básico / Premium) para que el cliente elija.</p>
+
+                  {paquetes.map((paq, idx) => (
+                    <div key={idx} className="border border-stone-200 rounded-xl p-4 mb-3 bg-stone-50/30 relative group">
+                      <button
+                        type="button"
+                        onClick={() => setPaquetes((p) => p.filter((_, i) => i !== idx))}
+                        className="absolute top-3 right-3 w-6 h-6 rounded-full bg-stone-200 text-stone-500 hover:bg-red-100 hover:text-red-600 flex items-center justify-center text-xs"
+                      >
+                        ×
+                      </button>
+                      <div className="grid grid-cols-3 gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={paq.nombre}
+                          onChange={(e) => setPaquetes((p) => p.map((x, i) => i === idx ? { ...x, nombre: e.target.value } : x))}
+                          placeholder="Nombre (Básico, Premium...)"
+                          className="col-span-2 input !py-2 !text-sm"
+                        />
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">$</span>
+                          <input
+                            type="number"
+                            value={paq.precio}
+                            onChange={(e) => setPaquetes((p) => p.map((x, i) => i === idx ? { ...x, precio: e.target.value } : x))}
+                            placeholder="Precio"
+                            className="input !py-2 !pl-7 !text-sm"
+                          />
+                        </div>
+                      </div>
+                      <textarea
+                        value={paq.descripcion}
+                        onChange={(e) => setPaquetes((p) => p.map((x, i) => i === idx ? { ...x, descripcion: e.target.value } : x))}
+                        rows={2}
+                        placeholder="Qué incluye este paquete..."
+                        className="input !py-2 !text-sm resize-none"
+                      />
+                    </div>
                   ))}
-                </select>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Zona <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={corregimiento}
-                  onChange={(e) => setCorregimiento(e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white transition-shadow"
-                >
-                  <option value="">Selecciona...</option>
-                  {CORREGIMIENTOS.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+                  <button
+                    type="button"
+                    onClick={() => setPaquetes([...paquetes, { nombre: '', descripcion: '', precio: '' }])}
+                    className="w-full border-2 border-dashed border-stone-300 rounded-xl py-3 text-sm font-medium text-stone-500 hover:border-teal-400 hover:text-teal-600 hover:bg-teal-50/40 transition-all flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Agregar paquete
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Precio base (USD) <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">$</span>
-                <input
-                  type="number"
-                  value={precioBase}
-                  onChange={(e) => setPrecioBase(e.target.value)}
-                  placeholder="0.00"
-                  min="1"
-                  step="0.01"
-                  className="w-full rounded-xl border border-gray-300 pl-8 pr-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow"
-                />
+            {error && (
+              <div className="mt-6 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+                {error}
               </div>
-              <p className="text-xs text-gray-400 mt-1">Precio de referencia. Los clientes verán esto al buscar.</p>
-            </div>
+            )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Fotos del servicio</label>
-              {userId && (
-                <ImageUpload
-                  bucket="servicios"
-                  userId={userId}
-                  value={fotos}
-                  onChange={setFotos}
-                  maxImages={5}
-                  maxSizeMB={5}
-                  publicBucket={true}
-                />
+            {/* Nav */}
+            <div className="flex justify-between gap-3 mt-8 pt-6 border-t border-stone-100">
+              <button
+                type="button"
+                disabled={paso === 1}
+                onClick={() => setPaso((p) => Math.max(1, p - 1) as Paso)}
+                className="px-5 py-2.5 rounded-xl text-sm font-medium text-stone-600 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                ← Atrás
+              </button>
+              {paso < 3 ? (
+                <button type="button" onClick={avanzar} className="btn-primary text-sm">
+                  Continuar →
+                </button>
+              ) : (
+                <button type="button" onClick={publicar} disabled={guardando} className="btn-primary text-sm">
+                  {guardando ? 'Publicando...' : '🚀 Publicar servicio'}
+                </button>
               )}
             </div>
           </div>
 
-          {/* Paquetes */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-                <span className="w-6 h-6 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold flex items-center justify-center">2</span>
-                Paquetes de servicio
-              </h2>
-              <span className="text-xs text-gray-400">Opcional</span>
-            </div>
-
-            <p className="text-sm text-gray-500">
-              Los paquetes permiten ofrecer distintos niveles de servicio. Los clientes podrán elegir uno al solicitar.
-            </p>
-
-            {paquetes.map((paq, idx) => (
-              <div key={idx} className="border border-gray-200 rounded-xl p-4 space-y-3 relative group bg-gray-50/50">
-                <button
-                  type="button"
-                  onClick={() => eliminarPaquete(idx)}
-                  className="absolute top-3 right-3 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                    Paquete {idx + 1}
-                  </span>
+          {/* Preview sidebar */}
+          <aside className="hidden lg:block">
+            <div className="sticky top-24">
+              <p className="text-xs font-bold uppercase tracking-wide text-stone-400 mb-2 px-1">Vista previa en buscador</p>
+              <div className="bg-white rounded-2xl border border-stone-200/80 overflow-hidden card-hover">
+                <div className="aspect-video bg-gradient-to-br from-teal-500/10 to-amber-500/10 flex items-center justify-center text-4xl">
+                  {fotos.length > 0 ? (
+                    <img src={fotos[0]} alt="" className="w-full h-full object-cover" />
+                  ) : catSel ? (
+                    CATEGORY_ICONS[catSel.nombre] || '🛠️'
+                  ) : (
+                    '🛠️'
+                  )}
                 </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="col-span-2">
-                    <input
-                      type="text"
-                      value={paq.nombre}
-                      onChange={(e) => actualizarPaquete(idx, 'nombre', e.target.value)}
-                      placeholder="Nombre (Ej: Básico, Estándar, Premium)"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    />
-                  </div>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-                    <input
-                      type="number"
-                      value={paq.precio}
-                      onChange={(e) => actualizarPaquete(idx, 'precio', e.target.value)}
-                      placeholder="Precio"
-                      min="0.01"
-                      step="0.01"
-                      className="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    />
+                <div className="p-4">
+                  <p className="text-xs font-medium text-teal-600 mb-1">{catSel?.nombre || 'Categoría'}</p>
+                  <h3 className="font-display font-bold text-stone-900 text-sm leading-tight mb-1 line-clamp-2">
+                    {titulo || 'Título del servicio aparecerá aquí'}
+                  </h3>
+                  <p className="text-xs text-stone-500 line-clamp-2 mb-3">
+                    {descripcion || 'Descripción...'}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-stone-400">📍 {corregimiento || 'Zona'}</span>
+                    <span className="font-display font-bold text-teal-700">
+                      {precioBase ? `$${Number(precioBase).toFixed(2)}` : '$—'}
+                    </span>
                   </div>
                 </div>
-
-                <textarea
-                  value={paq.descripcion}
-                  onChange={(e) => actualizarPaquete(idx, 'descripcion', e.target.value)}
-                  rows={2}
-                  placeholder="Qué incluye este paquete..."
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
-                />
               </div>
-            ))}
 
-            <button
-              type="button"
-              onClick={agregarPaquete}
-              className="w-full border-2 border-dashed border-gray-300 rounded-xl py-3 text-sm font-medium text-gray-500 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/50 transition-all flex items-center justify-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Agregar paquete
-            </button>
-          </div>
-
-          {/* Error */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
-              {error}
+              <div className="mt-4 bg-amber-50 border border-amber-100 rounded-xl p-3">
+                <p className="text-xs text-amber-900">
+                  <strong>💡 Tip:</strong> Perfiles verificados reciben hasta 3× más clientes. Completa tu perfil en{' '}
+                  <a href="/perfil" className="underline">Mi Perfil</a>.
+                </p>
+              </div>
             </div>
-          )}
-
-          {/* Submit */}
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="flex-1 bg-white border border-gray-300 text-gray-700 font-medium py-3 rounded-xl hover:bg-gray-50 transition-colors text-sm"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={guardando}
-              className="flex-[2] bg-emerald-600 text-white font-semibold py-3 rounded-xl hover:bg-emerald-700 disabled:bg-gray-300 transition-all text-sm shadow-lg shadow-emerald-200"
-            >
-              {guardando ? 'Publicando...' : 'Publicar servicio'}
-            </button>
-          </div>
-        </form>
+          </aside>
+        </div>
       </main>
     </div>
   );

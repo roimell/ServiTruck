@@ -48,6 +48,41 @@ export interface Perfil {
   avatar_url: string | null;
   es_proveedor: boolean;
   corregimiento: string | null;
+  // migration 009
+  telefono_verificado?: boolean;
+  fecha_nacimiento?: string | null;
+  cedula?: string | null;
+  bio?: string | null;
+  // migration 014 — admin + verificación
+  es_admin?: boolean;
+  verificado?: boolean;
+  verificado_at?: string | null;
+  verificado_por?: string | null;
+  nota_verificacion?: string | null;
+  activo?: boolean;
+  desactivado_at?: string | null;
+  desactivado_motivo?: string | null;
+  // migration 014 — perfil enriquecido
+  nombre_comercial?: string | null;
+  whatsapp?: string | null;
+  email_contacto?: string | null;
+  sitio_web?: string | null;
+  instagram?: string | null;
+  facebook?: string | null;
+  tiktok?: string | null;
+  anos_experiencia?: number | null;
+  certificaciones?: string[];
+  idiomas?: string[];
+  ruc?: string | null;
+  area_cobertura?: string[];
+  horario_atencion?: Record<string, unknown> | null;
+  portafolio_urls?: string[];
+  documento_identidad_url?: string | null;
+  documento_identidad_tipo?: string | null;
+  identificacion_verificada?: boolean;
+  // aggregated stats
+  rating_promedio?: number;
+  total_resenas?: number;
   created_at: string;
   updated_at: string;
 }
