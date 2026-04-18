@@ -4,15 +4,10 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/navbar';
+import SelectorCobertura from '@/components/selector-cobertura';
 import { createClient } from '@/lib/supabase';
+import { TODOS_CORREGIMIENTOS, PANAMA_GEO, PROVINCIAS } from '@/lib/panama-geo';
 import type { Perfil } from '@/types/database';
-
-const CORREGIMIENTOS = [
-  'San Francisco', 'Bella Vista', 'Obarrio', 'Punta Pacífica', 'Costa del Este',
-  'Clayton', 'Albrook', 'Ancón', 'Bethania', 'El Cangrejo', 'Vía España',
-  'Pueblo Nuevo', 'Juan Díaz', 'Parque Lefevre', 'Río Abajo', 'Tocumen',
-  'Las Cumbres', 'Chilibre', 'San Miguelito',
-];
 
 const IDIOMAS_OPCIONES = ['Español', 'Inglés', 'Francés', 'Portugués', 'Chino', 'Otro'];
 
@@ -266,10 +261,14 @@ export default function PerfilPage() {
                   <Campo label="Cédula" valor={cedula} onChange={setCedula} placeholder="8-888-8888" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1.5">Corregimiento *</label>
+                  <label className="block text-sm font-medium text-stone-700 mb-1.5">Corregimiento donde resides *</label>
                   <select value={corregimiento} onChange={(e) => setCorregimiento(e.target.value)} className="input">
-                    <option value="">Selecciona...</option>
-                    {CORREGIMIENTOS.map((c) => <option key={c} value={c}>{c}</option>)}
+                    <option value="">Selecciona provincia y corregimiento...</option>
+                    {PROVINCIAS.map((prov) => (
+                      <optgroup key={prov} label={prov}>
+                        {PANAMA_GEO[prov].map((c) => <option key={c} value={c}>{c}</option>)}
+                      </optgroup>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -386,23 +385,11 @@ export default function PerfilPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-stone-700 mb-2">Áreas que cubres</label>
-                  <p className="text-xs text-stone-400 mb-3">Selecciona los corregimientos donde ofreces tus servicios.</p>
-                  <div className="flex flex-wrap gap-2">
-                    {CORREGIMIENTOS.map((c) => {
-                      const sel = areaCobertura.includes(c);
-                      return (
-                        <button
-                          key={c}
-                          onClick={() => setAreaCobertura(sel ? areaCobertura.filter((x) => x !== c) : [...areaCobertura, c])}
-                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                            sel ? 'bg-teal-600 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                          }`}
-                        >
-                          {c}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <SelectorCobertura
+                    seleccionados={areaCobertura}
+                    onChange={setAreaCobertura}
+                    ayuda="Elige provincia → luego corregimientos. O selecciona la provincia completa de un toque."
+                  />
                 </div>
               </div>
             )}

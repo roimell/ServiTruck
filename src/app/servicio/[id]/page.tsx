@@ -89,7 +89,8 @@ export default function ServicioDetallePage() {
         Promise.resolve(null),
         supabase
           .from('resenas')
-          .select('*, autor:perfiles!autor_id(nombre)')
+          .select('*, autor:perfiles!autor_id(nombre, avatar_url), trabajo:trabajos!inner(servicio_id)')
+          .eq('trabajo.servicio_id', servicioId)
           .order('created_at', { ascending: false })
           .limit(20),
       ]);
@@ -119,10 +120,7 @@ export default function ServicioDetallePage() {
       setPaquetes((paquetesRes.data as PaqueteServicio[]) || []);
 
       if (resenasRes.data) {
-        const filtradas = resenasRes.data.filter(
-          (r: any) => r.trabajo?.servicio_id === servicioId
-        );
-        setResenas(filtradas as any);
+        setResenas(resenasRes.data as any);
       }
 
       setLoading(false);

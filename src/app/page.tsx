@@ -6,43 +6,53 @@ import { createClient } from '@/lib/supabase';
 import Navbar from '@/components/navbar';
 import type { Categoria } from '@/types/database';
 
-const STATS = [
-  { value: '500+', label: 'Profesionales activos' },
-  { value: '2,400+', label: 'Servicios completados' },
-  { value: '4.8', label: 'Calificación promedio', icon: '★' },
-  { value: '24/7', label: 'Disponibilidad' },
-];
-
-const TESTIMONIALS = [
-  {
-    name: 'María G.',
-    role: 'Cliente en Bella Vista',
-    text: 'Encontré un plomero en 20 minutos. El chat hizo todo súper fácil y transparente.',
-    rating: 5,
-  },
-  {
-    name: 'Carlos R.',
-    role: 'Electricista certificado',
-    text: 'Desde que estoy en ServiTrust, mis clientes confían más y mi negocio creció un 40%.',
-    rating: 5,
-  },
-  {
-    name: 'Ana M.',
-    role: 'Cliente en Clayton',
-    text: 'La negociación por chat es super práctica. Ya no hay sorpresas con los precios.',
-    rating: 5,
-  },
-];
+interface ResenaDestacada {
+  id: string;
+  calificacion: number;
+  comentario: string | null;
+  created_at: string;
+  autor: { nombre: string; avatar_url: string | null } | null;
+}
 
 export default function HomePage() {
   const supabase = createClient();
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [query, setQuery] = useState('');
+  const [stats, setStats] = useState<{ profesionales: number; servicios: number; ratingProm: number; completados: number } | null>(null);
+  const [resenasDestacadas, setResenasDestacadas] = useState<ResenaDestacada[]>([]);
 
   useEffect(() => {
     supabase.from('categorias').select('*').order('nombre').then(({ data }) => {
       if (data) setCategorias(data);
     });
+
+    // Stats reales en paralelo
+    (async () => {
+      const [profRes, servRes, trabajosRes, resenasAggRes] = await Promise.all([
+        supabase.from('perfiles').select('id', { count: 'exact', head: true }).eq('es_proveedor', true),
+        supabase.from('servicios').select('id', { count: 'exact', head: true }).eq('activo', true),
+        supabase.from('trabajos').select('id', { count: 'exact', head: true }).eq('estado', 'completado_fondos_liberados'),
+        supabase.from('resenas').select('calificacion'),
+      ]);
+      const calis = (resenasAggRes.data || []).map((r: any) => r.calificacion);
+      const prom = calis.length ? calis.reduce((a, b) => a + b, 0) / calis.length : 0;
+      setStats({
+        profesionales: profRes.count || 0,
+        servicios: servRes.count || 0,
+        completados: trabajosRes.count || 0,
+        ratingProm: Math.round(prom * 10) / 10,
+      });
+
+      // Reseñas reales (máx 3, 4+ estrellas, con comentario)
+      const { data: rds } = await supabase
+        .from('resenas')
+        .select('id, calificacion, comentario, created_at, autor:perfiles!autor_id(nombre, avatar_url)')
+        .gte('calificacion', 4)
+        .not('comentario', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(3);
+      if (rds) setResenasDestacadas(rds as any);
+    })();
   }, []);
 
   function handleSearch(e: React.FormEvent) {
@@ -135,16 +145,31 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Stats bar */}
-          <div className="animate-in animate-in-delay-4 mt-14 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
-            {STATS.map((s) => (
-              <div key={s.label} className="text-center">
-                <div className="text-2xl md:text-3xl font-display font-bold text-white flex items-center justify-center gap-1">
-                  {s.icon && <span className="text-amber-400 text-xl">{s.icon}</span>}
-                  {s.value}
-                </div>
-                <p className="text-teal-200/80 text-xs mt-1">{s.label}</p>
-              </div>
+          {/* Stats bar — datos reales */}
+          {stats && (stats.profesionales > 0 || stats.servicios > 0) && (
+            <div className="animate-in animate-in-delay-4 mt-14 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
+              <StatBlock value={stats.profesionales} label="Profesionales activos" />
+              <StatBlock value={stats.servicios} label="Servicios disponibles" />
+              {stats.ratingProm > 0 ? (
+                <StatBlock value={stats.ratingProm.toFixed(1)} label="Calificación promedio" icon="★" />
+              ) : (
+                <StatBlock value={stats.completados} label="Trabajos completados" />
+              )}
+              <StatBlock value="24/7" label="Soporte disponible" literal />
+            </div>
+          )}
+
+          {/* Trust row — garantías */}
+          <div className="animate-in animate-in-delay-4 mt-10 flex flex-wrap justify-center gap-2 max-w-3xl mx-auto">
+            {[
+              { i: '🛡️', t: 'Proveedores verificados' },
+              { i: '⚡', t: 'Respuesta en minutos' },
+              { i: '⭐', t: 'Reseñas reales de clientes' },
+              { i: '🇵🇦', t: '100% Panamá' },
+            ].map((x) => (
+              <span key={x.t} className="inline-flex items-center gap-1.5 bg-white/10 border border-white/15 text-teal-50 text-xs font-medium px-3 py-1.5 rounded-full backdrop-blur-sm">
+                <span>{x.i}</span> {x.t}
+              </span>
             ))}
           </div>
         </div>
@@ -250,42 +275,50 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* ── Testimonials ── */}
-      <section className="bg-stone-50 border-y border-stone-200/60">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-20">
-          <div className="text-center mb-12">
-            <p className="text-teal-600 font-medium text-sm tracking-wide uppercase mb-2">Lo que dicen nuestros usuarios</p>
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-stone-900">Confianza real</h2>
-          </div>
+      {/* ── Reseñas reales ── (solo si hay) */}
+      {resenasDestacadas.length > 0 && (
+        <section className="bg-stone-50 border-y border-stone-200/60">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-20">
+            <div className="text-center mb-12">
+              <p className="text-teal-600 font-medium text-sm tracking-wide uppercase mb-2">Reseñas verificadas</p>
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-stone-900">Clientes reales. Experiencias reales.</h2>
+            </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-stone-200/80 p-6 card-hover">
-                {/* Stars */}
-                <div className="flex gap-0.5 mb-4">
-                  {Array.from({ length: t.rating }).map((_, j) => (
-                    <svg key={j} className="w-4 h-4 text-amber-400 fill-current" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                </div>
-                <p className="text-stone-600 text-sm leading-relaxed mb-5">
-                  &ldquo;{t.text}&rdquo;
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white font-semibold text-sm">
-                    {t.name[0]}
+            <div className="grid md:grid-cols-3 gap-6">
+              {resenasDestacadas.map((r) => (
+                <div key={r.id} className="bg-white rounded-2xl border border-stone-200/80 p-6 card-hover">
+                  <div className="flex gap-0.5 mb-4">
+                    {Array.from({ length: r.calificacion }).map((_, j) => (
+                      <svg key={j} className="w-4 h-4 text-amber-400 fill-current" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    ))}
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-stone-900">{t.name}</p>
-                    <p className="text-xs text-stone-400">{t.role}</p>
+                  <p className="text-stone-700 text-sm leading-relaxed mb-5">
+                    &ldquo;{r.comentario}&rdquo;
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white font-semibold text-sm overflow-hidden">
+                      {r.autor?.avatar_url ? (
+                        <img src={r.autor.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        r.autor?.nombre?.[0]?.toUpperCase() || '?'
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-stone-900">{r.autor?.nombre || 'Cliente'}</p>
+                      <p className="text-xs text-stone-500 flex items-center gap-1">
+                        <svg className="w-3 h-3 text-teal-600" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                        Reseña verificada
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ── Provider CTA ── */}
       <section className="relative overflow-hidden">
@@ -395,12 +428,25 @@ export default function HomePage() {
               <Link href="/auth/registro" className="hover:text-stone-600 transition-colors">Registrarse</Link>
             </div>
 
-            <p className="text-xs text-stone-400">
+            <p className="text-xs text-stone-500">
               &copy; {new Date().getFullYear()} ServiTrust Panamá
             </p>
           </div>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function StatBlock({ value, label, icon, literal }: { value: string | number; label: string; icon?: string; literal?: boolean }) {
+  const formatted = literal || typeof value === 'string' ? value : value.toLocaleString('es-PA');
+  return (
+    <div className="text-center">
+      <div className="text-2xl md:text-3xl font-display font-bold text-white flex items-center justify-center gap-1">
+        {icon && <span className="text-amber-400 text-xl">{icon}</span>}
+        {formatted}
+      </div>
+      <p className="text-teal-200/90 text-xs mt-1">{label}</p>
     </div>
   );
 }
