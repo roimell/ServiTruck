@@ -5,15 +5,8 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import Navbar from '@/components/navbar';
 import ImageUpload from '@/components/image-upload';
+import { PANAMA_GEO, PROVINCIAS } from '@/lib/panama-geo';
 import type { Categoria } from '@/types/database';
-
-const CORREGIMIENTOS = [
-  'Bella Vista', 'Betania', 'Calidonia', 'San Francisco', 'El Cangrejo',
-  'Obarrio', 'Punta Pacífica', 'Costa del Este', 'Clayton', 'Ciudad del Saber',
-  'Condado del Rey', 'Juan Díaz', 'Parque Lefevre', 'Río Abajo', 'Pueblo Nuevo',
-  'Ancón', 'Balboa', 'Curundú', 'El Chorrillo', 'Santa Ana',
-  'Arraiján', 'La Chorrera', 'Colón', 'David', 'Santiago',
-];
 
 const CATEGORY_ICONS: Record<string, string> = {
   'Electricidad': '⚡', 'Plomería': '🔧', 'Limpieza': '✨', 'Pintura': '🎨',
@@ -61,6 +54,16 @@ export default function NuevoServicioPage() {
       if (!corregimiento) return 'Selecciona una zona';
       if (!precioBase || Number(precioBase) <= 0) return 'Indica un precio base válido';
     }
+    if (p === 3) {
+      const valid = paquetes.filter((pq) => pq.nombre.trim() && pq.precio && Number(pq.precio) > 0);
+      if (valid.length === 0) {
+        return 'Agrega al menos 1 paquete con nombre y precio. Los clientes confían 3× más en servicios con precio cerrado.';
+      }
+      for (const pq of valid) {
+        if (pq.nombre.trim().length < 3) return 'El nombre del paquete debe tener al menos 3 caracteres';
+        if (Number(pq.precio) < 1) return 'El precio del paquete debe ser mayor a $0';
+      }
+    }
     return null;
   }
 
@@ -68,12 +71,17 @@ export default function NuevoServicioPage() {
     const err = validarPaso(paso);
     if (err) { setError(err); return; }
     setError('');
-    setPaso((p) => Math.min(3, p + 1) as Paso);
+    const next = Math.min(3, paso + 1) as Paso;
+    // Al llegar a paso 3, pre-llenar el primer paquete con precio_base para reducir fricción
+    if (next === 3 && paquetes.length === 0 && precioBase) {
+      setPaquetes([{ nombre: 'Básico', descripcion: '', precio: precioBase }]);
+    }
+    setPaso(next);
   }
 
   async function publicar() {
     setError('');
-    const err1 = validarPaso(1) || validarPaso(2);
+    const err1 = validarPaso(1) || validarPaso(2) || validarPaso(3);
     if (err1) { setError(err1); return; }
 
     setGuardando(true);
@@ -237,10 +245,14 @@ export default function NuevoServicioPage() {
                   <div>
                     <label className="block text-sm font-semibold text-stone-900 mb-1">Zona principal *</label>
                     <select value={corregimiento} onChange={(e) => setCorregimiento(e.target.value)} className="input">
-                      <option value="">Selecciona...</option>
-                      {CORREGIMIENTOS.map((c) => <option key={c} value={c}>{c}</option>)}
+                      <option value="">Selecciona provincia → corregimiento...</option>
+                      {PROVINCIAS.map((prov) => (
+                        <optgroup key={prov} label={prov}>
+                          {PANAMA_GEO[prov].map((c) => <option key={c} value={c}>{c}</option>)}
+                        </optgroup>
+                      ))}
                     </select>
-                    <p className="text-xs text-stone-400 mt-1">Amplía tu cobertura desde tu perfil.</p>
+                    <p className="text-xs text-stone-500 mt-1">Amplía tu cobertura desde tu perfil.</p>
                   </div>
 
                   <div>
@@ -276,10 +288,18 @@ export default function NuevoServicioPage() {
 
                 <div className="border-t border-stone-100 pt-6">
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-sm font-semibold text-stone-900">Paquetes de servicio</label>
-                    <span className="text-xs text-stone-400">Opcional</span>
+                    <label className="block text-sm font-semibold text-stone-900">Paquetes con precio fijo *</label>
+                    <span className="text-[10px] font-bold text-white bg-teal-600 px-2 py-0.5 rounded-full">Obligatorio</span>
                   </div>
-                  <p className="text-xs text-stone-500 mb-4">Ofrece opciones (Básico / Premium) para que el cliente elija.</p>
+                  <p className="text-xs text-stone-500 mb-3">
+                    Define al menos 1 paquete con precio cerrado. Ej: <em>"Básico — $25"</em>.
+                  </p>
+                  <div className="mb-4 bg-teal-50 border border-teal-100 rounded-xl p-3 flex gap-2.5">
+                    <span className="text-lg leading-none">💡</span>
+                    <div className="text-xs text-teal-900 leading-relaxed">
+                      <strong>El panameño odia el "chatéame para precio".</strong> Servicios con precio cerrado reciben hasta <strong>3× más contrataciones</strong> y aparecen primero en búsquedas.
+                    </div>
+                  </div>
 
                   {paquetes.map((paq, idx) => (
                     <div key={idx} className="border border-stone-200 rounded-xl p-4 mb-3 bg-stone-50/30 relative group">
@@ -384,11 +404,23 @@ export default function NuevoServicioPage() {
                     {descripcion || 'Descripción...'}
                   </p>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-stone-400">📍 {corregimiento || 'Zona'}</span>
+                    <span className="text-xs text-stone-500">📍 {corregimiento || 'Zona'}</span>
                     <span className="font-display font-bold text-teal-700">
-                      {precioBase ? `$${Number(precioBase).toFixed(2)}` : '$—'}
+                      {(() => {
+                        const minPaq = paquetes
+                          .map((p) => Number(p.precio))
+                          .filter((n) => n > 0);
+                        if (minPaq.length > 0) return `desde $${Math.min(...minPaq).toFixed(0)}`;
+                        return precioBase ? `$${Number(precioBase).toFixed(2)}` : '$—';
+                      })()}
                     </span>
                   </div>
+                  {paquetes.some((p) => p.nombre && Number(p.precio) > 0) && (
+                    <div className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                      <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                      Precio cerrado
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -89,6 +89,7 @@ function BuscarContent() {
   );
   const [urgencia, setUrgencia] = useState<'hoy' | 'esta_semana' | 'flexible' | null>(null);
   const [tab, setTab] = useState<'todo' | 'servicios' | 'proveedores'>('todo');
+  const [soloPrecioCerrado, setSoloPrecioCerrado] = useState(false);
 
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [servicios, setServicios] = useState<ResultadoBusquedaServicio[]>([]);
@@ -181,13 +182,17 @@ function BuscarContent() {
             p_corregimiento: null,
             p_categoria_id: catId,
             p_limite: 20,
+            p_solo_precio_cerrado: soloPrecioCerrado,
           })
-        : supabase
-            .from('servicios')
-            .select(`id, titulo, descripcion, precio_base, corregimiento, rating_promedio, total_resenas, fotos, categoria:categorias(nombre), proveedor:perfiles!proveedor_id(nombre, avatar_url)`)
-            .eq('activo', true)
-            .eq('categoria_id', catId!)
-            .limit(20),
+        : (() => {
+            let qb = supabase
+              .from('servicios')
+              .select(`id, titulo, descripcion, precio_base, corregimiento, rating_promedio, total_resenas, fotos, precio_desde_paquete, tiene_paquetes_fijos, categoria:categorias(nombre), proveedor:perfiles!proveedor_id(nombre, avatar_url)`)
+              .eq('activo', true)
+              .eq('categoria_id', catId!);
+            if (soloPrecioCerrado) qb = qb.eq('tiene_paquetes_fijos', true);
+            return qb.order('tiene_paquetes_fijos', { ascending: false }).limit(20);
+          })(),
 
       // Providers
       supabase.rpc('buscar_proveedores', {
@@ -210,13 +215,15 @@ function BuscarContent() {
           proveedor_avatar: s.proveedor?.avatar_url,
           rating_promedio: s.rating_promedio, total_resenas: s.total_resenas,
           fotos: s.fotos || [], relevancia: 0,
+          precio_desde_paquete: s.precio_desde_paquete,
+          tiene_paquetes_fijos: s.tiene_paquetes_fijos,
         }))
       );
     }
 
     setProveedores((pvdResult.data as Proveedor[]) || []);
     setLoading(false);
-  }, [urgencia]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [urgencia, soloPrecioCerrado]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Debounce on query/category change
   useEffect(() => {
@@ -228,7 +235,7 @@ function BuscarContent() {
     const delay = query.trim().length < 2 ? 500 : 300;
     debounceRef.current = setTimeout(() => ejecutarBusqueda(query, categoriaId), delay);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [query, categoriaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [query, categoriaId, soloPrecioCerrado]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-search from URL params
   const [mounted, setMounted] = useState(false);
@@ -374,6 +381,21 @@ function BuscarContent() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Trust filter: precio cerrado */}
+        <div className="flex gap-2 mb-3 overflow-x-auto pb-1 scrollbar-hide">
+          <button
+            onClick={() => setSoloPrecioCerrado(!soloPrecioCerrado)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all shrink-0 ${
+              soloPrecioCerrado
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'bg-white border border-stone-200/80 text-stone-600 hover:border-emerald-300 hover:text-emerald-700'
+            }`}
+          >
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+            Solo precio cerrado
+          </button>
         </div>
 
         {/* Urgencia chips */}
@@ -624,10 +646,27 @@ function BuscarContent() {
                                 </h3>
                                 <p className="text-xs text-stone-500">{s.proveedor_nombre}</p>
                               </div>
-                              <span className="text-base font-display font-bold text-teal-600 shrink-0">
-                                ${s.precio_base.toFixed(0)}
-                              </span>
+                              <div className="text-right shrink-0">
+                                {s.tiene_paquetes_fijos && s.precio_desde_paquete ? (
+                                  <>
+                                    <div className="text-[10px] text-stone-500 leading-none">desde</div>
+                                    <div className="text-base font-display font-bold text-teal-600 leading-tight">
+                                      ${Number(s.precio_desde_paquete).toFixed(0)}
+                                    </div>
+                                  </>
+                                ) : (
+                                  <span className="text-base font-display font-bold text-teal-600">
+                                    ${s.precio_base.toFixed(0)}
+                                  </span>
+                                )}
+                              </div>
                             </div>
+                            {s.tiene_paquetes_fijos && (
+                              <div className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full mb-2">
+                                <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                                Precio cerrado
+                              </div>
+                            )}
                             {s.descripcion && (
                               <p className="text-xs text-stone-400 line-clamp-2 mb-2">{s.descripcion}</p>
                             )}

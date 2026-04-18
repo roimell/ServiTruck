@@ -269,6 +269,8 @@ export interface ResultadoBusquedaServicio {
   total_resenas: number;
   fotos: string[];
   relevancia: number;
+  precio_desde_paquete?: number | null;
+  tiene_paquetes_fijos?: boolean;
 }
 
 export interface MetricasProveedor {

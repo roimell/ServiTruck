@@ -406,9 +406,14 @@ export default function ServicioDetallePage() {
                   </div>
                 </button>
               ))}
-              <p className="text-xs text-stone-400 italic">
-                Precios referenciales. El monto final se acuerda en el chat con el profesional.
-              </p>
+              <div className="mt-3 bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex items-start gap-2.5">
+                <svg className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <div className="text-xs text-emerald-900 leading-relaxed">
+                  <strong>Precio cerrado.</strong> Estos precios son fijos. Sin sorpresas al final del trabajo.
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -440,8 +445,12 @@ export default function ServicioDetallePage() {
             <div className="relative z-10 flex items-center justify-between">
               <div>
                 <p className="text-teal-200 text-sm">Desde</p>
-                <p className="text-3xl font-display font-bold">${servicio.precio_base.toFixed(2)}</p>
-                <p className="text-teal-200 text-xs mt-1">Precio final se acuerda en el chat</p>
+                <p className="text-3xl font-display font-bold">
+                  ${(paquetes.length > 0 ? Math.min(...paquetes.map((p) => p.precio)) : servicio.precio_base).toFixed(2)}
+                </p>
+                <p className="text-teal-200 text-xs mt-1">
+                  {paquetes.length > 0 ? '✓ Precio cerrado — sin sorpresas' : 'Precio final se acuerda en el chat'}
+                </p>
               </div>
               <button
                 onClick={abrirSolicitud}
