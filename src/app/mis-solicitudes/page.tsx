@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import Navbar from '@/components/navbar';
 import EstadoBadge from '@/components/estado-badge';
@@ -16,13 +16,22 @@ interface SolicitudConDetalle extends SolicitudTrabajo {
 }
 
 export default function MisSolicitudesPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50"><Navbar /><div className="max-w-2xl mx-auto px-4 py-20 text-center text-stone-400">Cargando...</div></div>}>
+      <MisSolicitudesContent />
+    </Suspense>
+  );
+}
+
+function MisSolicitudesContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
 
   const [solicitudes, setSolicitudes] = useState<SolicitudConDetalle[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState<'todas' | 'activas' | 'completadas'>('activas');
-  const [chatTrabajoId, setChatTrabajoId] = useState<string | null>(null);
+  const [chatTrabajoId, setChatTrabajoId] = useState<string | null>(searchParams.get('chat'));
   const [resenaTrabajoId, setResenaTrabajoId] = useState<string | null>(null);
   const [resenasYaHechas, setResenasYaHechas] = useState<Set<string>>(new Set());
   const chatSolicitud = solicitudes.find((s) => s.id === chatTrabajoId);
@@ -59,16 +68,30 @@ export default function MisSolicitudesPage() {
     setLoading(false);
   }
 
-  async function cambiarEstado(solicitudId: string, nuevoEstado: EstadoTrabajo) {
+  async function cambiarEstado(solicitudId: string, nuevoEstado: EstadoTrabajo, motivoCancelacion?: string) {
     const { error } = await supabase
       .from('solicitudes_trabajo')
-      .update({ estado: nuevoEstado })
+      .update({
+        estado: nuevoEstado,
+        ...(motivoCancelacion ? { motivo_cancelacion: motivoCancelacion } : {}),
+      })
       .eq('id', solicitudId);
 
-    if (error) {
-      alert(error.message);
-      return;
+    if (error) { alert(error.message); return; }
+
+    // Auto-insert precio_mercado when work completes (data asset)
+    if (nuevoEstado === 'completado_fondos_liberados') {
+      const s = solicitudes.find((x) => x.id === solicitudId);
+      if (s?.monto_total && s.servicio) {
+        supabase.from('precios_mercado').insert({
+          solicitud_id: solicitudId,
+          monto_pab: s.monto_total,
+          fuente: 'solicitud',
+          corregimiento: 'Panama', // TODO: get from proveedor profile
+        });
+      }
     }
+
     cargarSolicitudes();
   }
 

@@ -27,15 +27,38 @@ export default function ServicioDetallePage() {
   const [resenas, setResenas] = useState<(Resena & { autor: Pick<Perfil, 'nombre'> })[]>([]);
   const [loading, setLoading] = useState(true);
   const [galeriaIdx, setGaleriaIdx] = useState<number | null>(null);
+  const viewStartRef = useState<number>(() => Date.now())[0];
+  const chatIniciadoRef = { current: false };
 
   // Solicitar servicio
   const [mostrarSolicitud, setMostrarSolicitud] = useState(false);
+  function abrirSolicitud() { chatIniciadoRef.current = true; setMostrarSolicitud(true); }
   const [descripcion, setDescripcion] = useState('');
   const [paqueteSeleccionado, setPaqueteSeleccionado] = useState<string | null>(null);
   const [fotosCliente, setFotosCliente] = useState<string[]>([]);
   const [userId, setUserId] = useState<string>('');
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
+
+  // Track intento_contacto on unmount (fire and forget)
+  useEffect(() => {
+    return () => {
+      const dur = Math.round((Date.now() - viewStartRef) / 1000);
+      // Only log if viewed > 5s (not a bounce)
+      if (dur < 5) return;
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (!servicio) return;
+        supabase.from('intentos_contacto').insert({
+          usuario_id: user?.id || null,
+          proveedor_id: (servicio as any).proveedor_id,
+          servicio_id: servicioId,
+          duracion_vista_segundos: dur,
+          inicio_chat: chatIniciadoRef.current,
+          dispositivo: /Mobi/.test(navigator.userAgent) ? 'mobile' : 'desktop',
+        });
+      });
+    };
+  }, [servicio]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     async function cargar() {
@@ -339,7 +362,7 @@ export default function ServicioDetallePage() {
                 <p className="text-teal-200 text-xs mt-1">Precio final se acuerda en el chat</p>
               </div>
               <button
-                onClick={() => setMostrarSolicitud(true)}
+                onClick={abrirSolicitud}
                 className="bg-white text-teal-700 font-semibold px-7 py-3.5 rounded-xl
                   hover:bg-teal-50 transition-all shadow-lg group"
               >

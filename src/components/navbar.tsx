@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
+import ChatNotificaciones from '@/components/chat-notificaciones';
 import type { Perfil } from '@/types/database';
 
 export default function Navbar() {
@@ -72,15 +73,18 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Mobile search link */}
-        <Link
-          href="/buscar"
-          className="md:hidden w-9 h-9 rounded-xl bg-stone-100 flex items-center justify-center text-stone-500 hover:bg-stone-200 hover:text-stone-700 transition-colors"
-        >
-          <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </Link>
+        {/* Mobile icons */}
+        <div className="flex md:hidden items-center gap-1">
+          {!cargando && perfil && <ChatNotificaciones />}
+          <Link
+            href="/buscar"
+            className="w-9 h-9 rounded-xl bg-stone-100 flex items-center justify-center text-stone-500 hover:bg-stone-200 hover:text-stone-700 transition-colors"
+          >
+            <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </Link>
+        </div>
 
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-2">
@@ -98,7 +102,9 @@ export default function Navbar() {
               <div className="w-16 h-4 rounded bg-stone-200 animate-pulse" />
             </div>
           ) : perfil ? (
-            <div className="relative ml-2">
+            <div className="flex items-center gap-1 ml-2">
+              <ChatNotificaciones />
+            <div className="relative">
               <button
                 onClick={(e) => { e.stopPropagation(); setMenuAbierto(!menuAbierto); }}
                 className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl hover:bg-stone-100/80 transition-all"
@@ -153,6 +159,7 @@ export default function Navbar() {
                   </div>
                 </div>
               )}
+            </div>
             </div>
           ) : (
             <div className="flex items-center gap-2 ml-2">

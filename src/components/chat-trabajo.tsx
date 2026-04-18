@@ -110,7 +110,15 @@ export default function ChatTrabajo({ trabajoId, estadoTrabajo, onEstadoCambiado
         },
         (payload) => {
           const nuevo = payload.new as Mensaje;
-          setMensajes((prev) => [...prev, nuevo]);
+          setMensajes((prev) => {
+            // Reemplazar mensaje optimista si existe, o agregar nuevo
+            const sinOptimista = prev.filter(
+              (m) => !(m.autor_id === nuevo.autor_id && m.contenido === nuevo.contenido && m.id !== nuevo.id)
+            );
+            // Evitar duplicado si ya existe por id
+            if (sinOptimista.some((m) => m.id === nuevo.id)) return sinOptimista;
+            return [...sinOptimista, nuevo];
+          });
           if (nuevo.autor_id !== userId) {
             setNoLeidos((prev) => prev + 1);
           }
@@ -154,11 +162,30 @@ export default function ChatTrabajo({ trabajoId, estadoTrabajo, onEstadoCambiado
     const contenido = nuevoMensaje.trim();
     setNuevoMensaje('');
 
-    await supabase.from('mensajes_chat').insert({
+    // Optimistic: mostrar mensaje inmediatamente
+    const tempId = crypto.randomUUID();
+    const msgOptimista: Mensaje = {
+      id: tempId,
+      trabajo_id: trabajoId,
+      autor_id: userId,
+      contenido,
+      leido: false,
+      created_at: new Date().toISOString(),
+    };
+    setMensajes((prev) => [...prev, msgOptimista]);
+
+    const { error } = await supabase.from('mensajes_chat').insert({
       trabajo_id: trabajoId,
       autor_id: userId,
       contenido,
     });
+
+    if (error) {
+      // Revertir mensaje optimista y restaurar input
+      setMensajes((prev) => prev.filter((m) => m.id !== tempId));
+      setNuevoMensaje(contenido);
+      console.error('Error enviando mensaje:', error.message);
+    }
 
     setEnviando(false);
   }

@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import Navbar from '@/components/navbar';
 import EstadoBadge from '@/components/estado-badge';
@@ -21,6 +22,15 @@ interface SolicitudProveedor extends SolicitudTrabajo {
 interface TendenciaData { categoria: string; hora: string; total: number; }
 
 export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50"><Navbar /><div className="max-w-6xl mx-auto px-4 py-20 text-center text-stone-400">Cargando...</div></div>}>
+      <DashboardContent />
+    </Suspense>
+  );
+}
+
+function DashboardContent() {
+  const searchParams = useSearchParams();
   const supabase = createClient();
 
   const [perfil, setPerfil] = useState<Perfil | null>(null);
@@ -32,7 +42,7 @@ export default function DashboardPage() {
   const [misServicios, setMisServicios] = useState<Servicio[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'solicitudes' | 'servicios' | 'metricas' | 'tendencias'>('solicitudes');
-  const [chatTrabajoId, setChatTrabajoId] = useState<string | null>(null);
+  const [chatTrabajoId, setChatTrabajoId] = useState<string | null>(searchParams.get('chat'));
   const chatSolicitud = solicitudes.find((s) => s.id === chatTrabajoId);
 
   useEffect(() => { cargarDashboard(); }, []);
