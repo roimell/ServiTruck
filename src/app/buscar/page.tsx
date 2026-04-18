@@ -452,8 +452,8 @@ function BuscarContent() {
         {!loading && buscado && (
           <div>
             {/* Tabs + count */}
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex gap-1 bg-stone-100 rounded-xl p-1">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
+              <div className="flex gap-1 bg-stone-100 rounded-xl p-1 self-start overflow-x-auto scrollbar-hide max-w-full">
                 {([
                   { key: 'todo', label: 'Todo', count: totalTodo },
                   { key: 'servicios', label: 'Servicios', count: totalServicios },
@@ -481,7 +481,7 @@ function BuscarContent() {
               </div>
 
               {(query || categoriaId) && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   {query && (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-stone-100 text-xs font-medium text-stone-600">
                       &ldquo;{query}&rdquo;
