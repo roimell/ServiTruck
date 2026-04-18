@@ -98,8 +98,12 @@ export default function ChatTrabajo({ trabajoId, estadoTrabajo, onEstadoCambiado
 
   // Suscripción en tiempo real
   useEffect(() => {
+    const channelName = `chat:${trabajoId}`;
+    const stale = supabase.getChannels().find(ch => ch.topic === `realtime:${channelName}`);
+    if (stale) supabase.removeChannel(stale);
+
     const channel = supabase
-      .channel(`chat:${trabajoId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {

@@ -48,6 +48,13 @@ export default function ChatNotificaciones() {
     if (!userId) return;
 
     const channelName = `notif-${userId}`;
+
+    // Strict Mode / re-render guard: remove stale channel before subscribing
+    const stale = supabase.getChannels().find(
+      (ch) => ch.topic === `realtime:${channelName}`
+    );
+    if (stale) supabase.removeChannel(stale);
+
     const channel = supabase
       .channel(channelName)
       .on(
