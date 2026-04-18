@@ -540,8 +540,7 @@ function BuscarContent() {
                       {(tab === 'todo' ? visibleProveedores.slice(0, 4) : visibleProveedores).map((p) => (
                         <Link
                           key={p.id}
-                          href={`/buscar?q=${encodeURIComponent(p.nombre)}`}
-                          onClick={() => { setQuery(p.nombre); }}
+                          href={`/proveedor/${p.id}`}
                           className="group bg-white rounded-2xl border border-stone-200/80 p-4 flex gap-4 card-hover"
                         >
                           {/* Avatar */}

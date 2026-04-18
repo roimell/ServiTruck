@@ -258,7 +258,13 @@ export default function ServicioDetallePage() {
             <div className="flex-1 min-w-0">
               <h1 className="font-display text-xl sm:text-2xl font-bold text-stone-900">{servicio.titulo}</h1>
               <p className="text-stone-500 font-medium flex items-center gap-1.5">
-                {servicio.proveedor?.nombre_comercial || servicio.proveedor?.nombre}
+                {servicio.proveedor?.id ? (
+                  <Link href={`/proveedor/${servicio.proveedor.id}`} className="hover:text-teal-700 hover:underline transition-colors">
+                    {servicio.proveedor?.nombre_comercial || servicio.proveedor?.nombre}
+                  </Link>
+                ) : (
+                  servicio.proveedor?.nombre_comercial || servicio.proveedor?.nombre
+                )}
                 {servicio.proveedor?.verificado && (
                   <span className="inline-flex items-center gap-0.5 bg-teal-100 text-teal-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                     <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
